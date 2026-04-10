@@ -6,41 +6,73 @@
 ## En una línea
 Socrates es un tutor doctoral basado en IA que aplica los 6 principios pedagógicos del A9 del cluster doctoral, en fase de diseño pre-código.
 
-## Estado al cierre de la última sesión (2026-04-10)
-- Visión: ✓ definida y documentada (docs/01_VISION.md)
+## Estado al cierre del snapshot intermedio (2026-04-10, tarde)
+
+- Visión: ✓ cerrada (docs/01_VISION.md)
+- Principios pedagógicos: ✓ cerrados con evidencia (docs/02_PRINCIPIOS_PEDAGOGICOS.md)
 - Fundamentación teórica: ✓ artículo A9 del cluster doctoral, escrito y auditado (BORRADOR PASS)
-- Principios pedagógicos: ✓ los 6, documentados con evidencia (docs/02_PRINCIPIOS_PEDAGOGICOS.md)
-- Arquitectura conceptual: ✓ 8 agentes + n8n, esbozada (docs/03_ARQUITECTURA_MULTI_AGENTE.md)
-- Decisiones abiertas: documentadas en docs/04_DECISIONES_ABIERTAS.md
+- Arquitectura conceptual: ✓ 10 agentes (A1-A10) + conversación de curaduría propuesta (A11, A12) en docs/03
+- Fase 1 de /ingeniería (Estrategia): ✓ cerrada en docs/05_ESTRATEGIA.md
+- Decisiones cerradas (8): D1, D2, D4 revisada, D5, D6, D11, D12, D13 — ver docs/04
+- Decisiones diferidas (4): D3, D7, D8, D9, D10 — ver docs/04
+- **Decisiones propuestas PENDIENTES de confirmación (6): D14, D15, D16, D17, D18, D19 — ver docs/99_DECISIONES_PENDIENTES.md**
 - Código: ✗ todavía no
-- Repo GitHub: ✓ creado en arudloff/tutor-de-estudio
-- Registrado en BITÁCORA: ✓ con ID `tutor-de-estudio`
+- Repo GitHub: ✓ arudloff/tutor-de-estudio, 3 commits, main actualizado
+- BITÁCORA: ✓ registrado como `tutor-de-estudio`, sesión 2026-04-10 journaleada
 
-## Qué tocar primero al volver
-1. Lee este archivo (CONTEXT_RESUME.md)
-2. Lee `PROJECT_STATE.md` para el estado completo
-3. Lee `docs/04_DECISIONES_ABIERTAS.md` para entender qué decisiones siguen pendientes
-4. Decide: ¿pasamos a `/ingeniería` para formalizar requisitos, o sigues explorando algún eje del diseño?
+## Qué tocar primero al retomar (CRÍTICO)
 
-## Tareas inmediatas (orden sugerido)
+1. **Leer `docs/99_DECISIONES_PENDIENTES.md`** — tiene las 6 propuestas que quedaron sin confirmar.
+2. **Responder las confirmaciones** — cada decisión tiene una pregunta específica. Idealmente responder las seis en bloque.
+3. **Primer punto no resuelto:** la pregunta conceptual sobre si "experiencia de aprendizaje significativo" se usa en el sentido de Ausubel (con las tres condiciones) o en sentido amplio. Esta respuesta determina si agregamos Ausubel como referencia al A9 en el próximo ciclo de corrección del artículo doctoral.
+4. **Después de cerrar D14-D19:** actualizar docs/03 (arquitectura ampliada con A11 y A12), docs/04 (D14-D19 pasadas a CERRADAS), docs/05 (sección nueva sobre POA y modo libro), PROJECT_STATE, commit + push.
+5. **Recién después:** avanzar a Fase 2 de /ingeniería (docs/06_PROCESOS.md).
 
-### Tarea 1 — Decisiones técnicas pendientes
-Antes de invocar `/ingeniería`, necesitamos cerrar (o explicitar como pendientes):
-- Dónde vive la inteligencia (pre-generación vs runtime vs híbrido) — propuesta abierta: híbrido
-- Self-host n8n vs n8n cloud vs simplificar (Trigger.dev, Inngest, código directo)
-- Modelo de negocio: solo personal, abierto al equipo del investigador, o producto
+## El origen de las 6 decisiones pendientes
 
-### Tarea 2 — /ingeniería fase 1 (estrategia)
-Formalizar el problema, los stakeholders, las restricciones críticas (sin código, sin requisitos todavía).
+Durante la sesión del 2026-04-10 surgieron tres ideas del investigador que requieren formalización:
 
-### Tarea 3 — /ingeniería fase 2 (proceso)
-Definir el flujo de usuario completo y el flujo de datos.
+**Idea A (D14-D16):** al incorporar varios PDFs, indicar el rol de cada uno (principal, equivalente, complementario, referencial, contrapunto); soportar libros con conversación de curaduría; sprints de aprendizaje por capas o bloques.
 
-### Tarea 4 — /ingeniería fase 3 (requisitos verificables)
-Cada requisito con criterio de aceptación ejecutable. Estos son los requisitos que el agente auditor de /dev recibirá durante la implementación.
+**Idea B (D17-D19):** Socrates debe conocer el objetivo del aprendiz (qué desafío espera resolver, para qué quiere estar habilitado) y es diseñador de experiencias de **aprendizaje significativo** — no solo entregador de contenido. Esto implica un Perfil de Objetivo del Aprendiz (POA) como input obligatorio, un agente nuevo A12 que lo captura, y propagación del POA al A3 (diseño) y al A4 (runtime).
 
-### Tarea 5 — MVP (cuando todo lo anterior esté cerrado)
-Implementación del flujo más pequeño que entrega valor: subir 1 PDF, generar micro-lecciones, distribuirlas.
+Ambas ideas son de diseño, no de implementación. Son el momento correcto para incorporarlas porque la Fase 2 de /ingeniería (Service Blueprint, state machines, User Story Map) necesita saber si existen POA, A11, A12, modo libro y sprints antes de poder modelarlas.
+
+## Tareas que quedan después de cerrar D14-D19
+
+### Tarea 1 — Fase 2 de /ingeniería (docs/06_PROCESOS.md)
+- Tripartita Barros para los 3 procesos centrales (ingestión, sesión, acreditación)
+- Service Blueprint del proceso central (sesión de aprendizaje desktop + complemento mobile)
+- State machines para curso, unidad, sesión, hito, sprint, corpus
+- SIPOC del sistema completo
+- User Story Map con corte MVP-1 / MVP-1.5 / MVP-2
+
+### Tarea 2 — Fase 3 de /ingeniería (docs/07_REQUISITOS.md)
+- User stories INVEST con criterios Given-When-Then
+- 3+ ejemplos concretos por story
+- Modelo de datos formal con RLS (incluyendo course_id, spans multi-PDF, POA, roles, sprints)
+- C4 Level 1 y 2
+- NFRs medibles
+- Definition of Ready
+
+### Tarea 3 — Diseño técnico del pipeline de ingestión
+- Formato exacto de los artefactos internos (JSON schemas)
+- Prompts operacionales finales de cada agente
+- Esquema de base de datos con RLS policies
+
+### Tarea 4 — Implementación del MVP-1
+- Solo cuando todas las decisiones estén cerradas y la Fase 3 esté completa
+- Acotado a 1 PDF/curso, agentes A1, A2, A3, A4, A7, A10 mínimo
+- Con POA activo desde el primer curso
+
+## Lo que NO hay que hacer al retomar
+- No saltar directo a Fase 2 sin cerrar D14-D19. La Fase 2 necesita saber qué componentes existen antes de modelarlos.
+- No empezar a codear sin Fase 3 completa. La auditoría del A9 demostró el riesgo.
+- No confundir "snapshot intermedio" con "cierre de fase". Esto NO ejecutó `yunque close` ni sincronizó los 6 repos del registro — solo respaldó el repo `tutor-de-estudio`.
+
+## Cómo retomar la conversación con Claude
+- Decir "retomo socrates" o "retomo tutor-de-estudio" — BITÁCORA cargará el contexto de la sesión 2026-04-10.
+- O decir directamente: "vamos a revisar docs/99_DECISIONES_PENDIENTES.md" y empezar a confirmar.
 
 ## Lo que NO hay que hacer
 - Saltarse `/ingeniería` y empezar a codear directo. La auditoría del A9 demostró el riesgo: sin requisitos verificables el auditor no puede detectar omisiones.

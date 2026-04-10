@@ -9,8 +9,11 @@ Proyecto en fase de diseño pre-código. Visión definida, fundamentación teór
 - **Fundamentación pedagógica** — completa, los 6 principios derivados del A9, documentados en docs/02_PRINCIPIOS_PEDAGOGICOS.md
 - **Arquitectura conceptual multi-agente** — esbozada, 9 agentes identificados con responsabilidades, modelos sugeridos y flujos, documentado en docs/03_ARQUITECTURA_MULTI_AGENTE.md
 - **Vinculación con cluster doctoral** — el A9 sirve como artículo fundacional empírico-teórico
-- **Estrategia formal (Fase 1 de /ingeniería)** — completa, documentada en docs/05_ESTRATEGIA.md. Incluye JTBD canónico, Value Proposition Canvas, Impact Map, Kano, MoSCoW del MVP-1, 7 decisiones técnicas cerradas (D1, D2, D4 revisada, D5, D6, D11, D12) y la regla de integración con SILA (ancestro metodológico, no componente runtime)
-- **Arquitectura multi-agente con know-how de SILA internalizado** — A2 y A3 documentados con sus prompts operacionales en docs/03_ARQUITECTURA_MULTI_AGENTE.md, incluyendo cobertura del 100% del PDF como criterio del A7
+- **Estrategia formal (Fase 1 de /ingeniería)** — completa, documentada en docs/05_ESTRATEGIA.md. Incluye JTBD canónico, Value Proposition Canvas, Impact Map, Kano, MoSCoW del MVP-1, 8 decisiones técnicas cerradas (D1, D2, D4 revisada, D5, D6, D11, D12, D13) y la regla de integración con SILA (ancestro metodológico, no componente runtime)
+- **Arquitectura multi-agente con know-how de SILA internalizado** — A2 y A3 documentados con sus prompts operacionales en docs/03_ARQUITECTURA_MULTI_AGENTE.md
+- **Agente A10 separado como Verificador de cobertura del 100% del PDF** (regla IV&V, separación de roles obligatoria)
+- **Multi-PDF como capacidad arquitectónica first-class** desde el modelo de datos (D13), con los 4 tipos de unidades (mono-fuente, multi-fuente convergente, multi-fuente en tensión, de integración), activado funcionalmente en MVP-1.5
+- **6 decisiones propuestas PENDIENTES de confirmación** (D14-D19) — documentadas en docs/99_DECISIONES_PENDIENTES.md. Bloquean el avance a Fase 2 de /ingeniería
 
 ## Lo que NO existe todavía
 - Código de cualquier tipo
