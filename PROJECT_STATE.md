@@ -7,8 +7,9 @@ Proyecto en fase de diseño pre-código. Visión definida, fundamentación teór
 ## Lo que funciona hoy
 - **Visión** — completa, documentada en docs/01_VISION.md
 - **Fundamentación pedagógica** — completa, los 6 principios derivados del A9, documentados en docs/02_PRINCIPIOS_PEDAGOGICOS.md
-- **Arquitectura conceptual multi-agente** — esbozada, 8 agentes identificados con responsabilidades, modelos sugeridos y flujos, documentado en docs/03_ARQUITECTURA_MULTI_AGENTE.md
+- **Arquitectura conceptual multi-agente** — esbozada, 9 agentes identificados con responsabilidades, modelos sugeridos y flujos, documentado en docs/03_ARQUITECTURA_MULTI_AGENTE.md
 - **Vinculación con cluster doctoral** — el A9 sirve como artículo fundacional empírico-teórico
+- **Estrategia formal (Fase 1 de /ingeniería)** — completa, documentada en docs/05_ESTRATEGIA.md. Incluye JTBD canónico, Value Proposition Canvas, Impact Map, Kano, MoSCoW del MVP-1, y 6 decisiones técnicas cerradas (D1, D2, D4 revisada, D5, D6, D11)
 
 ## Lo que NO existe todavía
 - Código de cualquier tipo
@@ -33,12 +34,11 @@ Proyecto en fase de diseño pre-código. Visión definida, fundamentación teór
   - `gen_A9.js`, `A9_tabla_verificacion_citas.md`, `A9_Tutor_Sin_Deuda.yunque-dr.json`
 
 ## Próximos pasos sugeridos
-1. **Invocar /ingeniería** para formalizar las tres fases (estrategia, proceso, requisitos verificables) antes de cualquier código
-2. **Definir el MVP mínimo** — la versión más pequeña que entrega valor real (mi sugerencia inicial: subir 1 PDF, descomponerlo en unidades, generar micro-lecciones nivel 1 con preguntas de opción múltiple, distribuirlas hasta una fecha)
-3. **Decisión técnica: dónde vive la inteligencia** — pre-generación + LLM para adaptación (opción 3 del análisis), o full-runtime LLM, o híbrido
-4. **Decisión técnica: deployment** — self-host n8n vs n8n cloud vs alternativa más simple
-5. **Diseñar el primer flujo n8n** — el de ingestión (PDF → Unidades de sentido → Micro-lecciones nivel 1)
-6. **Mockups de la PWA** — pantallas mobile de: subir material, lección diaria, dashboard de progreso
+1. **Fase 2 de /ingeniería (Procesos)** — Service Blueprint del proceso central (sesión de aprendizaje), modelo tripartito de Barros para los 3 procesos, state machines, SIPOC, User Story Map con corte MVP-1
+2. **Fase 3 de /ingeniería (Requisitos verificables)** — User stories en formato INVEST con criterios Given-When-Then ejecutables, 3+ ejemplos por story, modelo de datos formal, NFRs medibles, Definition of Ready
+3. **Diseño técnico del pipeline de ingestión** — A1 → A2 → A3 → A7, formato de artefactos persistidos
+4. **Esquema de base de datos** — tablas, relaciones, RLS policies, índices
+5. **Implementación del MVP-1** — solo cuando los pasos 1-4 estén cerrados
 
 ## Deuda técnica conocida
 - Ninguna todavía (no hay código)
@@ -101,3 +101,9 @@ Proyecto en fase de diseño pre-código. Visión definida, fundamentación teór
 | 2026-04-10 | Stack: Next.js PWA + Supabase | Mobile-first, ya conocido por el investigador, rápido de montar | Native iOS/Android (descartado: aplazado a fase 2); CLI (descartado: no llega al estudiante en su día) |
 | 2026-04-10 | MVP con un solo modo (examen) | Reducir variables para validar el pipeline antes de generalizar | MVP con los 3 modos (descartado: complejidad innecesaria) |
 | 2026-04-10 | Diálogo socrático estructurado por expectativa-misconception | Evidencia AutoTutor: d=0.81, mejor que socrático abierto | Socrático abierto (descartado: difícil de cerrar, ineficiente); quizz tradicional (descartado: ilusión de saber) |
+| 2026-04-10 | D1 — Inteligencia híbrida | Pre-gen reduce costo recurrente; runtime LLM se reserva para lo único impredecible (respuesta del aprendiz) | Pre-gen total (descartado: cero adaptabilidad); Runtime total (descartado: costo proporcional al uso) |
+| 2026-04-10 | D2 — Sin n8n; Next.js routes + Trigger.dev/Inngest | Elimina infra a mantener, mejor privacidad, menor superficie operacional | Self-host n8n (descartado: el investigador no es DevOps); n8n cloud (descartado: textos académicos pasarían por terceros) |
+| 2026-04-10 | D4 — Desktop-first norma metodológica + mobile complemento | Trabajo doctoral profundo (subir, leer, dialogar, producir Tier 2-3) requiere desktop. Mobile es para micro-dosis | Mobile-first puro (descartado: sacrificaría profundidad por ubicuidad — lo opuesto a lo que Socrates protege) |
+| 2026-04-10 | D5 — Supabase todo en uno + RLS día uno | Velocidad de implementación + RLS robusto para multi-tenancy | Backend custom (descartado: más código sin valor proporcional); Auth separado tipo Clerk (descartado: complejidad sin justificación en MVP-1) |
+| 2026-04-10 | D6 — Multi-usuario controlado desde día uno | Agregar multi-usuario después de single-user es más caro que diseñarlo bien desde el inicio | Solo personal (descartado: bloquea validación con estudiantes); Producto comercial (descartado: distrae del cluster doctoral) |
+| 2026-04-10 | D11 — MVP-1 con 5 agentes (A1, A2, A3, A4, A7), P1-P3 cubiertos, Bloom L1-L3, modo único | Recorte mínimo viable que cubre los principios fundacionales y permite validar el pipeline completo | MVP grande con todos los principios (descartado: demasiadas variables que validar a la vez) |

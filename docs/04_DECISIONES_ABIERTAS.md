@@ -3,6 +3,28 @@
 > Lo que aún no se ha resuelto y debe resolverse antes (o durante) `/ingeniería`.
 > Cada decisión incluye opciones, criterio de evaluación y un favorito provisorio.
 
+## Estado de cierre (actualizado 2026-04-10)
+
+| ID | Tema | Estado | Resolución | Documento |
+|---|---|---|---|---|
+| D1 | Dónde vive la inteligencia | ✅ CERRADA | Híbrido (pre-gen + runtime LLM acotado) | docs/05 § 6 |
+| D2 | Orquestación | ✅ CERRADA | Sin n8n. Next.js routes + Trigger.dev/Inngest | docs/05 § 6 |
+| D3 | Modelo evaluador | ⏸ DIFERIDA | A fase de implementación. Empezar con Sonnet, escalar a cascada o Opus si calidad degrada | — |
+| D4 | Stack frontend | ✅ CERRADA (revisada) | Desktop-first norma metodológica + mobile complemento. Next.js 14 PWA | docs/05 § 6 |
+| D5 | Backend | ✅ CERRADA | Supabase todo en uno con RLS día uno | docs/05 § 6 |
+| D6 | Modelo de operación | ✅ CERRADA | Multi-usuario controlado desde día uno (whitelist) | docs/05 § 6 |
+| D7 | Errores y caídas | ⏸ DIFERIDA | A MVP-2 o fase 2 de producto. MVP-1 usa fail-closed con buen mensaje | — |
+| D8 | Telemetría | ⏸ PARCIAL | Esquema básico de eventos en MVP-1. Sofisticación en MVP-2 | — |
+| D9 | Privacidad | ⏸ DIFERIDA | Política mínima viable antes del primer usuario no-investigador | — |
+| D10 | Validación empírica | ⏸ DIFERIDA | Diseño cuasi-experimental para MVP-2 | — |
+| D11 | Definición de MVP-1 | ✅ CERRADA | 4-5 agentes activos, P1-P3 cubiertos, P4 parcial (sólo modelado experto), P5 ausente, P6 parcial. Modo único = examen, Bloom L1-L3 | docs/05 § 6 |
+
+**Decisiones bloqueantes de código:** todas cerradas. Listo para Fase 2 de /ingeniería.
+
+---
+
+## Detalle histórico (referencia, las decisiones cerradas mantienen su análisis original)
+
 ## D1 — Dónde vive la inteligencia
 
 **Pregunta.** Cuando el aprendiz responde algo y Socrates evalúa, ¿esa evaluación se hace en runtime contra un LLM, o se usa contenido pre-generado al cargar el material?
