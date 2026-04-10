@@ -18,6 +18,10 @@
 | D9 | Privacidad | ⏸ DIFERIDA | Política mínima viable antes del primer usuario no-investigador | — |
 | D10 | Validación empírica | ⏸ DIFERIDA | Diseño cuasi-experimental para MVP-2 | — |
 | D11 | Definición de MVP-1 | ✅ CERRADA | 4-5 agentes activos, P1-P3 cubiertos, P4 parcial (sólo modelado experto), P5 ausente, P6 parcial. Modo único = examen, Bloom L1-L3 | docs/05 § 6 |
+| D12 | Integración con SILA | ✅ CERRADA | Internalización del know-how de SILA en los prompts de A2 y A3. SILA es ancestro metodológico, no componente runtime. Socrates procesa el PDF una sola vez con su propio pipeline | docs/05 § 10 |
+| D13 | Multi-PDF como capacidad arquitectónica | ✅ CERRADA | Multi-PDF es first-class desde el modelo de datos. MVP-1 entrega 1 PDF/curso para validar pipeline básico. MVP-1.5 activa multi-PDF con A2_corpus, A3_corpus y A10_corpus | docs/03 § Procesamiento multi-PDF |
+
+**Nuevo agente añadido:** A10 (Verificador de cobertura) — separado del A2 y del A7 por exigencia del principio IV&V. Garantiza que el 100% del texto sustantivo del PDF queda cubierto por al menos una unidad de sentido.
 
 **Decisiones bloqueantes de código:** todas cerradas. Listo para Fase 2 de /ingeniería.
 

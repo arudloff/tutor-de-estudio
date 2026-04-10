@@ -452,7 +452,125 @@ Si una de estas condiciones no se cumple, el MVP-1 se itera (no se avanza) hasta
 
 ---
 
-## 10. Output: lo que esta Fase 1 entrega como input para la Fase 2
+## 10. Linaje metodológico: SILA como ancestro de Socrates
+
+Esta sección establece la regla no negociable sobre cómo Socrates incorpora el conocimiento desarrollado en SILA, el sistema previo del investigador para procesamiento doctoral profundo de artículos académicos.
+
+### 10.1 SILA en una línea
+
+SILA (Sistema Integrado de Lectura Académica) es el sistema actual del investigador para procesar artículos académicos individuales en una sesión intensiva de aproximadamente 90 minutos. Produce un documento Word con seis secciones (pre-lectura, puente a la tesis, lectura anotada con retrieval, glosario de ideas fuerza, reflexiones, mapa de diálogos inter-textuales) más una nota Obsidian con flashcards Anki. SILA está calibrado al estilo doctoral del investigador y validado por uso real durante el doctorado.
+
+### 10.2 La diferencia categórica entre SILA y Socrates
+
+| Dimensión | SILA | Socrates |
+|---|---|---|
+| **Naturaleza temporal** | Estática (un .docx generado una vez) | Dinámica (diálogo continuo, plan recalculado) |
+| **Modo de interacción** | Documento que el aprendiz lee | Interlocutor que pregunta y adapta |
+| **Locus del trabajo cognitivo** | El aprendiz lee, anota, reflexiona en su .docx | El aprendiz lucha (fallo productivo), defiende, reformula bajo cuestionamiento |
+| **Evaluación** | Auto-evaluación con termómetro de confianza (escala 1-5) | Diálogo socrático estructurado por expectativa-misconception, con acreditación trazable |
+| **Adaptabilidad al aprendiz individual** | Cero — el mismo .docx para todos | Total — cada turno depende de la respuesta anterior |
+| **Detección del no-saber** | El aprendiz lo declara con la escala 1-5 (subjetivo) | El sistema lo detecta en el diálogo (objetivo) |
+| **Unidad de trabajo** | Un artículo individual | Un cuerpo de literatura contra una fecha límite |
+| **Uso del tiempo** | 90 minutos en una sesión intensiva | Micro-dosis distribuidas durante días/semanas |
+| **Output del aprendiz** | Notas en el .docx, marcas FC/CZ para flashcards | Producción generativa estructurada (Tier 1-2-3) acumulada |
+
+SILA optimiza la **lectura individual de un artículo**. Socrates optimiza la **construcción dialógica de comprensión integrada de un cuerpo de literatura contra una fecha límite**. Son cosas distintas y complementarias en la experiencia del aprendiz.
+
+### 10.3 La regla no negociable
+
+**SILA es ancestro metodológico de Socrates, no componente runtime.**
+
+- Socrates **internaliza el know-how de SILA** en los prompts y la lógica de los agentes A2 (Analista semántico) y A3 (Diseñador instruccional). El conocimiento que SILA aplica para descomponer un texto académico se vuelve conocimiento dentro del A2 y A3.
+- Socrates **NO importa archivos generados por SILA**, **NO depende de SILA en runtime**, **NO procesa el PDF dos veces**.
+- Socrates procesa el PDF una sola vez con su propio pipeline (A1 → A2 → A3 → A7), y produce sus propios artefactos internos (unidades de sentido, grafo de prerequisitos, problemas de fallo productivo, rúbricas, catálogos de misconcepciones, tareas generativas).
+- SILA queda como sistema personal del investigador para uso fuera de Socrates (lectura individual sin curso). Los dos sistemas conviven sin acoplarse.
+
+### 10.4 Lo que Socrates internaliza de SILA (5 elementos de know-how)
+
+| # | Conocimiento metodológico de SILA | Cómo se internaliza en Socrates |
+|---|---|---|
+| **1** | **Cómo descomponer el esqueleto argumentativo** de un texto académico: identificar paso por paso qué afirma el autor, cómo lo demuestra, en qué sección lo demuestra. SILA produce esto en su sección A.2 ("Esqueleto argumentativo"). | El prompt del agente A2 incluye instrucciones explícitas para producir esta descomposición como parte de su análisis del PDF. La descomposición es input del grafo de prerequisitos. |
+| **2** | **Cómo construir un glosario jerarquizado de conceptos** con tres niveles de peso (CRÍTICO ◆◆◆, IMPORTANTE ◆◆, COMPLEMENTARIO ◆), anidamientos (Contiene → / Es parte de → / Requiere → / Produce →) y tensiones (pares en conflicto). SILA produce esto en su sección C ("Glosario de ideas fuerza"). | El A2 produce este glosario como parte de su output. Usa las mismas tres categorías de SILA porque la calibración del investigador para distinguir CRÍTICO de IMPORTANTE de COMPLEMENTARIO ya está validada por uso. |
+| **3** | **Cómo identificar puntos contraintuitivos** del texto: los 3-5 momentos donde el argumento es contraintuitivo, donde un término técnico se usa de forma distinta a su uso cotidiano, donde existe una distinción crítica que si se pierde el resto parece contradictorio. SILA produce esto en su sección A.4 ("Alertas de lectura"). | Estos puntos se convierten en la **entrada inicial del catálogo de misconcepciones** del agente A3. El A3 después los expande con su propio análisis del texto completo, llegando a 8-15 misconcepciones por unidad (no solo 3-5). |
+| **4** | **Cómo posicionar un texto en su literatura**: a qué debate responde, con quién dialoga, qué gap llena, qué tradición teórica representa, qué relevancia doctoral tiene. SILA produce esto en su sección A.1 ("Posicionamiento en la literatura"). | El A2 produce este posicionamiento y lo usa para construir el grafo cruzado entre artículos del mismo curso (cómo dialogan entre sí los textos). |
+| **5** | **Cómo identificar afirmaciones citables verbatim**: las 6-8 frases del texto directamente usables en un marco teórico, organizadas por función argumental (definir el concepto central, justificar el enfoque, explicar el mecanismo, debatir con otra posición, fundamentar una herramienta, distinguir conceptos). SILA produce esto en su sección A.5 ("Afirmaciones citables"). | El A3 las usa como insumo para diseñar tanto la instrucción canónica de cada unidad como las preguntas adversariales del diálogo socrático (P3) y el modelado experto (P4). |
+
+Estos cinco son **conocimiento metodológico que Socrates absorbe**. No son archivos que importa.
+
+### 10.5 Lo que Socrates explícitamente NO toma de SILA
+
+Estos elementos siguen siendo válidos dentro de SILA, pero entran en conflicto estructural con la naturaleza de Socrates y por tanto quedan fuera:
+
+| # | Elemento de SILA | Por qué rompería Socrates |
+|---|---|---|
+| **1** | **Las 6 secciones del .docx como entregable al aprendiz** | Le entregaría al aprendiz un documento estático en lugar de obligarlo a luchar con el problema. Es exactamente lo opuesto al fallo productivo del Principio 1 |
+| **2** | **Termómetro de confianza** (auto-rating 1-5 del aprendiz) | Es **autoevaluación subjetiva** — exactamente lo que el A9 sección 5.3 critica como **"ilusión de saber"**. Socrates rechaza estructuralmente la autoevaluación como mecanismo de acreditación. La acreditación en Socrates es por diálogo, no por autoreporte |
+| **3** | **Retrieval activo precanned** (3-4 preguntas con respuestas en columna paralela) | Las preguntas están **fijas y son las mismas para todos**. Socrates las genera adaptativamente en función de qué dijo el aprendiz hace 3 turnos. Si Socrates usara preguntas precanned se convertiría en quiz, no diálogo |
+| **4** | **Marcas FC/CZ para flashcards Anki** | Anki es repetición espaciada de items aislados — optimiza la métrica equivocada (reconocimiento, no comprensión). Socrates ya rechazó este enfoque en docs/01_VISION |
+| **5** | **Estados manuales de revisión** (cargado → procesado → en_lectura → sesion1_ok → sesion2_ok → completo) | El estado en SILA lo declara el aprendiz manualmente. En Socrates el estado se deriva de evidencia trazable del diálogo. Son lógicas opuestas: declarativa vs verificada |
+
+El criterio común es que todo lo de SILA que asume **autoreporte del aprendiz**, **contenido estático precanned** o **memorización por repetición** queda fuera. Socrates es exactamente lo opuesto en esos tres ejes.
+
+### 10.6 La evolución conceptual
+
+```
+SILA v1 (sistema personal del investigador, 2024-2026)
+ │
+ │  - Procesamiento estático de un artículo individual
+ │  - .docx con 6 secciones + nota Obsidian + flashcards
+ │  - 90 minutos en una sesión intensiva
+ │  - Termómetro de confianza como autoevaluación
+ │
+ └──→ enseñó al investigador qué funciona pedagógicamente
+      en lectura doctoral profunda
+            │
+            ▼
+        SOCRATES (sistema integrado siguiente generación)
+        - Toma del aprendizaje de SILA: descomposición argumental,
+          glosario jerarquizado, alertas como misconcepciones,
+          posicionamiento en literatura, afirmaciones citables
+        - Añade lo que SILA no tiene: fallo productivo, diálogo
+          socrático adaptativo, acreditación trazable, plan adaptativo
+          de cuerpo de literatura, grafo de prerequisitos formal
+        - Rechaza lo que SILA tiene pero no encaja: autoevaluación
+          subjetiva, retrieval precanned, flashcards de reconocimiento,
+          estados manuales declarativos
+        - Es output dinámico, no documento estático
+```
+
+SILA es ancestro metodológico de Socrates exactamente del mismo modo que el A9 del cluster doctoral es ancestro teórico de Socrates: el A9 enseñó al investigador los seis principios; Socrates los implementa. SILA enseñó al investigador cómo descomponer profundo un texto académico; Socrates absorbe esa metodología en su pipeline de ingestión.
+
+### 10.7 Decisión D12 — Forma de la integración SILA → Socrates
+
+**D12 — Cómo Socrates incorpora el conocimiento de SILA** ✅ CERRADA
+
+**Decisión:** **Internalización del know-how en los prompts del A2 y A3.** Sin dependencia de runtime, sin importación de artefactos, sin doble procesamiento del PDF.
+
+- Socrates procesa el PDF una sola vez con su propio pipeline.
+- Los prompts del A2 incluyen las instrucciones de descomposición argumental, glosario jerarquizado y posicionamiento en literatura que SILA aplica.
+- Los prompts del A3 incluyen las instrucciones de identificación de puntos contraintuitivos (alertas de lectura) y afirmaciones citables verbatim que SILA aplica.
+- Socrates produce sus propios artefactos internos en su propia base de datos. No depende de archivos .docx ni de notas Obsidian generadas por SILA.
+- SILA sigue existiendo como sistema personal independiente del investigador para uso fuera de Socrates.
+- Output opcional al formato Obsidian de SILA: si en un futuro el aprendiz quiere mantener su vault Obsidian sincronizado con lo que Socrates analizó, Socrates puede exportar las unidades a formato compatible. **Esto es output, no input.** Diferido a MVP-2 o más adelante.
+
+**Por qué esta decisión:**
+
+1. **Una sola pasada del PDF.** Sin doble procesamiento, sin doble costo de tokens, sin riesgo de divergencia entre dos pipelines.
+2. **Socrates puede mejorar el conocimiento heredado.** Al internalizar el know-how, Socrates puede agregar matices que SILA no tiene (granularidad fina al nivel de proposición, grafo formal de prerequisitos, cruce entre artículos del corpus del curso).
+3. **Cero acoplamiento operacional.** Socrates no depende de que SILA esté disponible, instalado, o actualizado.
+4. **Preserva la naturaleza socrática.** El aprendiz dentro de Socrates nunca recibe un .docx estático. Solo interactúa con el diálogo del A4.
+5. **Respeta el flujo paralelo del investigador.** El investigador puede seguir usando SILA para lectura individual fuera de cursos. Los dos sistemas conviven sin coordinarse.
+6. **Es la evolución natural.** Socrates es la siguiente generación de SILA, no su parásito.
+
+**Consecuencias para el diseño:**
+
+- Los prompts del A2 y A3 deben incluir explícitamente las instrucciones metodológicas heredadas de SILA. Esto se documenta en `docs/03_ARQUITECTURA_MULTI_AGENTE.md`.
+- El esquema de base de datos debe contemplar las estructuras que Socrates produce: unidades, grafo, glosario jerarquizado, posicionamiento, problema de fallo productivo, instrucción canónica, rúbrica, catálogo de misconcepciones, tarea generativa. Esto se cierra en Fase 3 (Requisitos).
+- El agente A7 (Auditor) verifica la fidelidad de las unidades y del catálogo de misconcepciones contra el PDF, no contra artefactos SILA.
+
+---
+
+## 11. Output: lo que esta Fase 1 entrega como input para la Fase 2
 
 Para entrar a la Fase 2 de `/ingeniería` (Diseño de Procesos), tenemos:
 
