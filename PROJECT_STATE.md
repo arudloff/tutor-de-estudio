@@ -1,8 +1,8 @@
 # Socrates — Estado actual
-> Última actualización: 2026-04-11
+> Última actualización: 2026-04-11 (Sprint S0 Bootstrap completo)
 
 ## Estado general
-Proyecto en fase de diseño pre-código, **Fase 1 de /ingeniería completa con D14-D19 cerradas el 2026-04-11**. Visión definida, fundamentación teórica completa (A9 del cluster doctoral + Ausubel estricto como anclaje del POA), arquitectura multi-agente con 12 agentes identificados (incluidos A11 Curador de corpus y A12 Entrevistador de objetivos). Listo para avanzar a Fase 2 de /ingeniería (Procesos).
+Proyecto con **Fases A, B, C de /ingeniería completas** (decisiones + procesos + requisitos) y **Sprint S0 (Bootstrap) completado**. El scaffold ejecutable del MVP-1 está en el repo con Next.js 14 + TypeScript strict + Supabase clients + primera migración SQL con RLS + tests adversariales (env + migraciones) + hooks git pre-commit + CI en GitHub Actions + scripts de auditoría. Listo para avanzar al Sprint S1 (HU-1 + HU-2: auth por whitelist + crear curso).
 
 ## Lo que funciona hoy
 - **Visión** — completa, documentada en docs/01_VISION.md
@@ -20,16 +20,35 @@ Proyecto en fase de diseño pre-código, **Fase 1 de /ingeniería completa con D
 - **5 roles explícitos de PDFs en el corpus** (D14) — principal/equivalente/complementario/referencial/contrapunto, con flujo híbrido de asignación
 - **Sprints de aprendizaje como concepto de primera clase** (D16) — modelo de datos en MVP-1, UI en MVP-1.5/MVP-2
 
-## Lo que NO existe todavía
-- Código de cualquier tipo
-- Especificaciones técnicas formales (requisitos verificables, criterios de aceptación)
-- Mockups de UI
-- Flujos n8n implementados
-- Esquema de base de datos
-- Tests
-- Decisiones cerradas sobre stack final
+## Lo que NO existe todavía (después de S0)
+- Proyecto Supabase real aprovisionado (el código está listo para conectarse cuando haya credenciales reales)
+- Lógica de negocio (empieza en S1)
+- UI más allá del scaffold (página index placeholder)
+- Flujos de jobs largos (Trigger.dev / Inngest) — decisión y código en S3
+- Endpoints de API (empiezan en S1 con /api/auth/signup)
+- Agentes LLM implementados (A1 en S3, A2+A10 en S3, A3+A7 en S4, A4 en S5, A12 en S2)
+- CI corriendo en GitHub (se activa al primer push con el workflow)
 
 ## Último hito completado
+**2026-04-11 (tarde) — Sprint S0 Bootstrap completo**
+- Qué se hizo: scaffold ejecutable del MVP-1 creado en el mismo directorio del repo tutor-de-estudio. Next.js 14 con App Router + TypeScript strict con `noUncheckedIndexedAccess` + Tailwind CSS + CSP headers. `lib/env.ts` con validación Zod de fail-fast al startup. `lib/supabase/` con 3 clients separados (browser, server, admin). Primera migración SQL `0001_init.sql` con `invited_users` (RLS bloqueante) + `course` (RLS con 4 policies + state machine CHECK + trigger updated_at). Tests adversariales con Vitest: 6 tests para `lib/env.ts` (incluyendo bypass tentativos) + 10 tests estáticos para la migración (verificando RLS, ON DELETE CASCADE, no-USING-true, etc.). Scripts `audit-secrets.mjs` y `audit-rls.mjs` que el pre-commit hook y CI ejecutan. Hook husky pre-commit bloqueante con los 4 checks (secrets + RLS + typecheck + tests). CI en `.github/workflows/ci.yml` con 3 jobs (audit estático, typecheck+tests, npm audit high/critical). README completamente reescrito con stack, setup, scripts y roadmap de sprints.
+- Decisiones clave tomadas durante S0:
+  - Modelo de Claude fijado en env: `claude-opus-4-6` y `claude-sonnet-4-6` (versionados, no "latest")
+  - TypeScript con flags estrictos adicionales: `noUncheckedIndexedAccess`, `noImplicitOverride`
+  - CSP restrictiva por default (solo self + supabase + anthropic + openai)
+  - Bucket privado de PDFs desde día uno (sin acceso público)
+  - 3 clients de Supabase separados con enforcement estructural: `admin.ts` lanza error si se importa en el navegador
+- Archivos creados (24 archivos nuevos):
+  - `package.json`, `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts`, `postcss.config.mjs`, `vitest.config.ts`, `.env.example`, `next-env.d.ts`
+  - `app/layout.tsx`, `app/page.tsx`, `app/globals.css`
+  - `lib/env.ts`, `lib/supabase/client.ts`, `lib/supabase/server.ts`, `lib/supabase/admin.ts`, `lib/db/types.ts`, `lib/db/migrations/0001_init.sql`
+  - `scripts/audit-secrets.mjs`, `scripts/audit-rls.mjs`, `scripts/db-migrate.mjs`
+  - `tests/setup.ts`, `tests/env.test.ts`, `tests/migrations.test.ts`
+  - `.husky/pre-commit`, `.github/workflows/ci.yml`
+  - `README.md` (reescrito)
+- Checks estáticos ejecutados: `audit-secrets.mjs` PASS (0 secretos en 18 archivos), `audit-rls.mjs` PASS (1/1 tabla con datos de usuario tiene RLS)
+- **Estado:** listo para Sprint S1 (HU-1 sign-up por whitelist + HU-2 crear curso)
+
 **2026-04-11 — Cierre de D14-D19 y completitud de Fase 1 de /ingeniería**
 - Qué se hizo: el investigador confirmó las 6 decisiones propuestas D14-D19 que quedaron pendientes al cierre del 2026-04-10 ("acojo tus sugerencias"). Resolución de la pregunta conceptual abierta sobre Ausubel: **Ausubel estricto** (las 3 condiciones del aprendizaje significativo). Propagación completa a docs/03 (arquitectura ampliada con A11 y A12 + secciones nuevas sobre roles de PDFs, modo libro, propagación del POA y sprints), docs/04 (registro de cierre), docs/05 (sección 11 nueva con POA, curaduría conversada y sprints), docs/99 (marcado como CERRADO).
 - Decisiones cerradas en este hito:
@@ -54,13 +73,23 @@ Proyecto en fase de diseño pre-código, **Fase 1 de /ingeniería completa con D
   - `gen_A9.js`, `A9_tabla_verificacion_citas.md`, `A9_Tutor_Sin_Deuda.yunque-dr.json`
 
 ## Próximos pasos sugeridos (en orden estricto)
-1. **Fase 2 de /ingeniería (Procesos) — `docs/06_PROCESOS.md`** — Service Blueprint de los 4 procesos centrales (Onboarding NUEVO, Ingestión, Sesión, Acreditación), modelo tripartito de Barros, state machines (curso, POA, PDF, unidad, sesión, hito, sprint, corpus, chapter_curation), SIPOC, User Story Map con corte MVP-1 / MVP-1.5 / MVP-2
-2. **Fase 3 de /ingeniería (Requisitos verificables) — `docs/07_REQUISITOS.md`** — User stories en formato INVEST con criterios Given-When-Then ejecutables, 3+ ejemplos por story, modelo de datos formal con `learner_objective_profile` + `pdf_role` + `sprint` + `chapter_curation`, RLS policies, NFRs medibles, Definition of Ready, mapeo a checks ejecutables de YUNQUE
-3. **Implementación del MVP-1 con auditoría por feature** — solo cuando 1 y 2 estén cerrados. Sprints S0-S6 con auditoría YUNQUE Nivel 2 después de cada feature, hooks git activos, QA Report obligatorio en cada entregable
-4. **Tarea de cluster doctoral (paralela, NO bloquea Socrates):** agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del artículo
+1. ✅ Fase 2 de /ingeniería — COMPLETA en `docs/06_PROCESOS.md`
+2. ✅ Fase 3 de /ingeniería — COMPLETA en `docs/07_REQUISITOS.md`
+3. ✅ Sprint S0 (Bootstrap) — COMPLETO
+4. **Sprint S1 (Auth + crear curso)** — Siguiente. Implementa HU-1 (sign-up por whitelist con AC-1.1 a 1.4) y HU-2 (crear curso con AC-2.1 a 2.3). Requiere proyecto Supabase real + primer aprovisionamiento (migración aplicada + primer email en whitelist). Termina con auditoría YUNQUE Nivel 2 por agente separado + QA Report.
+5. **Sprint S2 (A12 + POA + state machine)** — HU-3 (A12 conduce entrevista), HU-4 (POA bloquea sin PDFs)
+6. **Sprint S3 (Upload + A1 + A2 + A10)** — HU-5, HU-6. Primer agente LLM real (A1 con GPT-4o) + A2 + loop A2↔A10
+7. **Sprint S4 (A3 con POA + A7)** — HU-7. Primer A3 calibrado contra POA real
+8. **Sprint S5 (Sesión socrática completa)** — HU-8 a HU-11. El corazón del producto: fallo productivo + diálogo A4 con POA + acreditación trazable
+9. **Sprint S6 (Dashboard + hardening)** — HU-12. Cierre del MVP-1, auditoría YUNQUE completa final, lighthouse, a11y
+10. **Tarea de cluster doctoral (paralela, NO bloquea Socrates):** agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del artículo
 
 ## Deuda técnica conocida
-- Ninguna todavía (no hay código)
+- **CSP con `'unsafe-inline'` en script-src y style-src** — severidad baja. Razón: Next 14 requiere inline scripts para hydration inicial y Tailwind inyecta estilos inline. Plan: reemplazar por nonces dinámicos en S6 (hardening). Ubicación: `next.config.mjs` sección headers.
+- **Tests dinámicos de RLS contra Postgres real ausentes** — severidad media. En S0 solo tenemos checks estáticos sobre SQL (`audit-rls.mjs` + `tests/migrations.test.ts`). Los tests dinámicos adversariales (intentar leer datos de otro usuario con JWT forjado) se agregan en S1 cuando haya Postgres efímero en CI.
+- **`scripts/db-migrate.mjs` es stub** — severidad baja. En S0 solo lista migraciones sin ejecutarlas. Implementación completa en S1 con conexión real a Supabase.
+- **CI no se ha activado todavía** — severidad baja. El workflow `.github/workflows/ci.yml` existe pero no se ha ejecutado porque el primer push tras S0 aún no ocurrió.
+- **ADR-001 (`.audit-queue/` + hook pre-push)** — diferido del BoK. No bloquea S0 pero conviene agregarlo en S1 o S2.
 
 ## Riesgos identificados
 - **Calidad del chunking semántico** — si las "unidades de sentido" son malas, todo el pipeline falla. Severidad: alta. Mitigación: el agente A2 (Analista) debe usar Claude Opus y debe haber un agente A7 (Auditor) que verifique la calidad de las unidades antes de pasarlas al diseñador.

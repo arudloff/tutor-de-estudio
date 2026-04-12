@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 250 250 249;
+  --foreground: 12 10 9;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+}
+
+/* Accesibilidad: focus visible siempre */
+:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}

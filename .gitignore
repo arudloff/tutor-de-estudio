@@ -9,10 +9,23 @@ build/
 dist/
 
 # Environment variables (NEVER commit secrets)
+# NOTA: .env.example SI se commitea (contiene solo nombres y placeholders)
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.test
 *.env
+!.env.example
+
+# Credenciales y secrets diversos
+*credentials*.json
+*secrets*.json
+*.pem
+*.key
+*.crt
+*.p12
 
 # IDE / editor
 .vscode/

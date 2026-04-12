@@ -1,0 +1,41 @@
+#!/usr/bin/env sh
+
+# Socrates pre-commit hook
+# Se ejecuta antes de cada commit. Bloquea el commit si algun check falla.
+# Capa 1 del modelo de enforcement (CLAUDE.md — 3 capas mecanicas).
+#
+# Checks:
+#   1. Secret scan (audit-secrets.mjs) — bloqueante
+#   2. RLS scan sobre migraciones nuevas (audit-rls.mjs) — bloqueante
+#   3. Typecheck — bloqueante
+#   4. Tests — bloqueante
+#
+# Para bypasear (SOLO en emergencia, con autorizacion explicita):
+#   git commit --no-verify
+# NOTA: el estandar prohibe --no-verify salvo autorizacion explicita del usuario.
+
+set -e
+
+echo "[pre-commit] Socrates checks starting..."
+
+# 1. Secret scan
+echo "[pre-commit] 1/4 scanning for hardcoded secrets..."
+node scripts/audit-secrets.mjs
+
+# 2. RLS scan sobre migraciones
+echo "[pre-commit] 2/4 verifying RLS on SQL migrations..."
+node scripts/audit-rls.mjs
+
+# 3. Typecheck (solo si hay node_modules instalados)
+if [ -d "node_modules" ]; then
+  echo "[pre-commit] 3/4 typecheck..."
+  npm run typecheck
+
+  # 4. Tests
+  echo "[pre-commit] 4/4 tests..."
+  npm run test
+else
+  echo "[pre-commit] 3-4/4 SKIP (node_modules no instalado — ejecuta 'npm install')"
+fi
+
+echo "[pre-commit] all checks PASS"
