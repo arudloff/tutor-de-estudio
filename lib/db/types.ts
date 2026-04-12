@@ -171,12 +171,182 @@ export interface Database {
           created_at?: string
         }
       }
+      pdf: {
+        Row: {
+          id: string
+          course_id: string
+          filename: string
+          size_bytes: number
+          mime_type: string
+          storage_path: string
+          role: PdfRole
+          state: PdfState
+          full_text: string | null
+          toc: Json | null
+          length_pp: number | null
+          ingestion_iter: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          filename: string
+          size_bytes: number
+          mime_type?: string
+          storage_path: string
+          role?: PdfRole
+          state?: PdfState
+          full_text?: string | null
+          toc?: Json | null
+          length_pp?: number | null
+          ingestion_iter?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          filename?: string
+          size_bytes?: number
+          mime_type?: string
+          storage_path?: string
+          role?: PdfRole
+          state?: PdfState
+          full_text?: string | null
+          toc?: Json | null
+          length_pp?: number | null
+          ingestion_iter?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      sense_unit: {
+        Row: {
+          id: string
+          course_id: string
+          pdf_id: string
+          name: string
+          description: string
+          unit_type: string
+          source_spans: Json
+          state: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          pdf_id: string
+          name: string
+          description: string
+          unit_type?: string
+          source_spans: Json
+          state?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          pdf_id?: string
+          name?: string
+          description?: string
+          unit_type?: string
+          source_spans?: Json
+          state?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      prerequisite_edge: {
+        Row: { from_unit: string; to_unit: string }
+        Insert: { from_unit: string; to_unit: string }
+        Update: { from_unit?: string; to_unit?: string }
+      }
+      coverage_report: {
+        Row: {
+          id: string
+          pdf_id: string
+          iter: number
+          coverage_pct: number
+          orphan_count: number
+          orphan_paragraphs: Json
+          non_coverable: Json
+          pass: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          pdf_id: string
+          iter?: number
+          coverage_pct: number
+          orphan_count: number
+          orphan_paragraphs?: Json
+          non_coverable?: Json
+          pass: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          pdf_id?: string
+          iter?: number
+          coverage_pct?: number
+          orphan_count?: number
+          orphan_paragraphs?: Json
+          non_coverable?: Json
+          pass?: boolean
+          created_at?: string
+        }
+      }
+      ingestion_job: {
+        Row: {
+          id: string
+          course_id: string
+          state: string
+          current_step: string | null
+          progress_pct: number
+          error_msg: string | null
+          started_at: string | null
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          state?: string
+          current_step?: string | null
+          progress_pct?: number
+          error_msg?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          state?: string
+          current_step?: string | null
+          progress_pct?: number
+          error_msg?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: Record<string, never>
   }
 }
+
+export type PdfRole = 'principal' | 'equivalente' | 'complementario' | 'referencial' | 'contrapunto'
+
+export type PdfState =
+  | 'uploaded' | 'structure_known' | 'role_assigned' | 'ready_to_ingest'
+  | 'text_extracted' | 'analyzed' | 'coverage_ok' | 'coverage_fail'
+  | 'ready' | 'fail_review'
 
 export type PoaState =
   | 'empty'
