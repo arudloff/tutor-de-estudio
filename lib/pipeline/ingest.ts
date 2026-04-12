@@ -1,12 +1,12 @@
 /**
- * Pipeline de ingestion: A1 → A2 → A10 (loop hasta cobertura 100%)
+ * Pipeline de ingestion: A1 → A2 → A10 → A3 → A7
  *
  * Orquesta la secuencia completa de procesamiento de un PDF:
  * 1. A1 extrae texto
  * 2. A2 descompone en unidades de sentido
- * 3. A10 verifica cobertura 100%
- * 4. Si cobertura < 100%, A2 reprocesa con feedback de huerfanos (max 3 iter)
- * 5. Si despues de 3 iter sigue fallando → FAIL_REVIEW
+ * 3. A10 verifica cobertura 100% (loop max 3 iter)
+ * 4. A3 disena pedagogia con POA en contexto (D19)
+ * 5. A7 audita fidelidad de citas y misconcepciones
  *
  * En MVP-1 este pipeline corre como job sincrono en un API route.
  * En sprints futuros se migrara a Trigger.dev/Inngest para jobs largos.
@@ -15,19 +15,32 @@
 import { runA1 } from '@/lib/agents/a1-reader'
 import { runA2, type SenseUnit, type A2Result } from '@/lib/agents/a2-analyst'
 import { runA10, type CoverageResult } from '@/lib/agents/a10-coverage'
+import { runA3 } from '@/lib/agents/a3-designer'
+import { runA7 } from '@/lib/agents/a7-auditor'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/db/types'
 
 const MAX_COVERAGE_ITERATIONS = 3
 
 export interface IngestProgress {
-  step: 'a1' | 'a2' | 'a10' | 'a2_retry' | 'done' | 'fail_review'
+  step: 'a1' | 'a2' | 'a10' | 'a2_retry' | 'a3' | 'a7' | 'done' | 'fail_review'
   iteration: number
   coveragePct?: number
   message: string
 }
 
 type AdminClient = SupabaseClient<Database>
+
+interface PoaContext {
+  learner_role: string | null
+  discipline: string | null
+  research_field: string | null
+  target_challenge: string | null
+  target_capability: string | null
+  success_signal: string | null
+  known_authors: string[] | null
+  theoretical_traditions: string[] | null
+}
 
 export async function runIngestionPipeline(
   admin: AdminClient,
@@ -36,6 +49,7 @@ export async function runIngestionPipeline(
   pdfBase64: string,
   pdfFilename: string,
   jobId: string,
+  poa: PoaContext,
   onProgress?: (p: IngestProgress) => void
 ): Promise<{ success: boolean; unitCount: number }> {
   const report = (p: IngestProgress) => onProgress?.(p)
@@ -163,6 +177,78 @@ export async function runIngestionPipeline(
           }
         }
       }
+    }
+  }
+
+  // --- Paso 4: A3 disena pedagogia con POA + A7 audita (HU-7) ---
+  if (a2Result) {
+    report({ step: 'a3', iteration: 0, message: 'Disenando lecciones calibradas al POA...' })
+    await admin.from('ingestion_job').update({ current_step: 'a3', progress_pct: 80 }).eq('id', jobId)
+
+    const { data: persistedUnits } = await admin
+      .from('sense_unit')
+      .select('id, name, description, source_spans')
+      .eq('pdf_id', pdfId)
+
+    for (const unit of persistedUnits ?? []) {
+      // Extraer texto fuente de los spans
+      const sourceText = a1Result.fullText.slice(0, 3000) // simplified for MVP-1
+
+      const a3Result = await runA3(
+        { name: unit.name, description: unit.description, sourceText },
+        poa
+      )
+
+      // Persistir los 5 artefactos del A3
+      await admin.from('productive_failure_problem').insert({
+        unit_id: unit.id,
+        content: a3Result.productiveFailureProblem,
+      })
+      await admin.from('canonical_instruction').insert({
+        unit_id: unit.id,
+        content: a3Result.canonicalInstruction,
+        cited_spans: a3Result.citedSpans as unknown as Database['public']['Tables']['canonical_instruction']['Insert']['cited_spans'],
+      })
+      await admin.from('rubric').insert({
+        unit_id: unit.id,
+        items: a3Result.rubricItems as unknown as Database['public']['Tables']['rubric']['Insert']['items'],
+      })
+      await admin.from('misconception_catalog').insert({
+        unit_id: unit.id,
+        items: a3Result.misconceptions as unknown as Database['public']['Tables']['misconception_catalog']['Insert']['items'],
+      })
+      await admin.from('generative_task').insert({
+        unit_id: unit.id,
+        tier: a3Result.generativeTask.tier,
+        format: a3Result.generativeTask.format,
+        prompt: a3Result.generativeTask.prompt,
+        max_words: a3Result.generativeTask.maxWords,
+      })
+
+      // A7 audita fidelidad de citas
+      report({ step: 'a7', iteration: 0, message: `Auditando fidelidad: ${unit.name}...` })
+      await admin.from('ingestion_job').update({ current_step: 'a7', progress_pct: 90 }).eq('id', jobId)
+
+      const a7Result = await runA7({
+        unitName: unit.name,
+        canonicalInstruction: a3Result.canonicalInstruction,
+        citedSpans: a3Result.citedSpans,
+        misconceptions: a3Result.misconceptions,
+        sourceText,
+      })
+
+      await admin.from('audit_report').insert({
+        unit_id: unit.id,
+        agent: 'a7',
+        cite_results: a7Result.citeResults as unknown as Database['public']['Tables']['audit_report']['Insert']['cite_results'],
+        pass: a7Result.pass,
+      })
+
+      // Actualizar estado de la unidad
+      await admin
+        .from('sense_unit')
+        .update({ state: a7Result.pass ? 'available' : 'audited_fail' })
+        .eq('id', unit.id)
     }
   }
 

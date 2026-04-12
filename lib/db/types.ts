@@ -334,6 +334,36 @@ export interface Database {
           created_at?: string
         }
       }
+      productive_failure_problem: {
+        Row: { id: string; unit_id: string; content: string; created_at: string }
+        Insert: { id?: string; unit_id: string; content: string; created_at?: string }
+        Update: { id?: string; unit_id?: string; content?: string; created_at?: string }
+      }
+      canonical_instruction: {
+        Row: { id: string; unit_id: string; content: string; cited_spans: Json; created_at: string }
+        Insert: { id?: string; unit_id: string; content: string; cited_spans?: Json; created_at?: string }
+        Update: { id?: string; unit_id?: string; content?: string; cited_spans?: Json; created_at?: string }
+      }
+      rubric: {
+        Row: { id: string; unit_id: string; items: Json; created_at: string }
+        Insert: { id?: string; unit_id: string; items: Json; created_at?: string }
+        Update: { id?: string; unit_id?: string; items?: Json; created_at?: string }
+      }
+      misconception_catalog: {
+        Row: { id: string; unit_id: string; items: Json; created_at: string }
+        Insert: { id?: string; unit_id: string; items: Json; created_at?: string }
+        Update: { id?: string; unit_id?: string; items?: Json; created_at?: string }
+      }
+      generative_task: {
+        Row: { id: string; unit_id: string; tier: number; format: string; prompt: string; max_words: number; created_at: string }
+        Insert: { id?: string; unit_id: string; tier: number; format: string; prompt: string; max_words: number; created_at?: string }
+        Update: { id?: string; unit_id?: string; tier?: number; format?: string; prompt?: string; max_words?: number; created_at?: string }
+      }
+      audit_report: {
+        Row: { id: string; unit_id: string; agent: string; iter: number; cite_results: Json; pass: boolean; created_at: string }
+        Insert: { id?: string; unit_id: string; agent: string; iter?: number; cite_results: Json; pass: boolean; created_at?: string }
+        Update: { id?: string; unit_id?: string; agent?: string; iter?: number; cite_results?: Json; pass?: boolean; created_at?: string }
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

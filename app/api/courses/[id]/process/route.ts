@@ -75,6 +75,17 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
   // Transicionar curso
   await admin.from('course').update({ state: 'ingesting' }).eq('id', params.id)
 
+  // Cargar POA del curso (D19: el pipeline necesita el POA para calibrar A3)
+  const { data: poa } = await admin
+    .from('learner_objective_profile')
+    .select('learner_role, discipline, research_field, target_challenge, target_capability, success_signal, known_authors, theoretical_traditions')
+    .eq('course_id', params.id)
+    .single()
+
+  if (!poa) {
+    return NextResponse.json({ error: 'POA not found or not confirmed' }, { status: 409 })
+  }
+
   // Ejecutar pipeline en background (fire and forget en MVP-1)
   // En sprints futuros esto se migra a Trigger.dev/Inngest
   const pdf = pdfs[0]! // MVP-1: 1 PDF por curso
@@ -94,6 +105,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       base64,
       pdf.filename,
       job.id,
+      poa,
       (progress) => {
         // eslint-disable-next-line no-console
         console.log(`[ingest] ${progress.step} iter=${progress.iteration}: ${progress.message}`)
