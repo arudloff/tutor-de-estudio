@@ -1,27 +1,31 @@
 # 03 — Arquitectura multi-agente de Socrates
 
 > Esbozo conceptual. No es la arquitectura técnica final. Esa se cierra en `/ingeniería`.
-> Fecha: 2026-04-10
+> Fecha: 2026-04-10 (creación), 2026-04-11 (revisión: incorporación de A11 y A12 tras cierre de D14-D19)
 > Estado: borrador
 
 ## Principio rector
 
 No usamos un único agente conversacional. Cada tarea tiene un perfil cognitivo distinto y requiere un modelo distinto. La separación de roles también permite auditar: si el diseñador de lecciones y el evaluador de calidad son agentes diferentes, uno puede verificar al otro. Esta es la misma lógica de separación de roles que el estándar de desarrollo del investigador exige para el código y los textos doctorales.
 
-## Los nueve agentes
+## Los doce agentes
+
+> **Cambio del 2026-04-11:** se agregaron A11 (Curador de corpus) y A12 (Entrevistador de objetivos) al cerrar las decisiones D14-D19. La lista pasa de 10 a 12 agentes. A12 está activo en MVP-1; A11 se activa funcionalmente en MVP-2 (modo libro), aunque el modelo de datos lo soporta desde el MVP-1.
 
 | ID | Agente | Tarea | Modelo sugerido | Por qué ese modelo |
 |---|---|---|---|---|
 | A1 | Lector | Extraer texto y estructura de PDFs, capítulos, presentaciones | GPT-4o | Mejor visión multimodal, rápido, costo bajo |
 | A2 | Analista semántico | Descomponer el texto en unidades de sentido, construir el grafo de prerequisitos, glosario jerarquizado, posicionamiento en literatura | Claude Opus | Razonamiento profundo sobre textos densos |
-| A3 | Diseñador instruccional | Para cada unidad, diseñar la secuencia pedagógica completa: problema de fallo productivo, instrucción canónica, rúbrica de expectativas, catálogo de misconcepciones expandido, tarea generativa | Claude Sonnet | Buen balance creatividad/costo |
-| A4 | Evaluador socrático | Conducir el diálogo de verificación, detectar evidencia de dominio o ausencia de dominio, decidir cierre del diálogo | Claude Opus | Necesita razonamiento fino para distinguir comprensión de memorización |
+| A3 | Diseñador instruccional | Para cada unidad, diseñar la secuencia pedagógica completa: problema de fallo productivo, instrucción canónica, rúbrica de expectativas, catálogo de misconcepciones expandido, tarea generativa. **Recibe POA como contexto en cada llamada (D19).** | Claude Sonnet | Buen balance creatividad/costo |
+| A4 | Evaluador socrático | Conducir el diálogo de verificación, detectar evidencia de dominio o ausencia de dominio, decidir cierre del diálogo. **Recibe POA como contexto en cada turno (D19).** | Claude Opus | Necesita razonamiento fino para distinguir comprensión de memorización |
 | A5 | Adaptador (planificador) | Recalcular el plan de aprendizaje según fecha límite, tiempo disponible, velocidad observada, resultados de cada hito | Algorítmico (FSRS) + Claude Sonnet para reformulación | Mayormente lógica, LLM solo para reformular enfoque pedagógico |
 | A6 | Productor visual | Generar mapas mentales, diagramas, infografías, líneas de tiempo, mapas conceptuales | Mermaid + D3 + DALL-E 3 | Herramientas especializadas, no LLM genérico |
 | A7 | Auditor de calidad | Verificar que las unidades de sentido son fieles al texto fuente, que las rúbricas son completas, que el catálogo de misconcepciones cubre los puntos contraintuitivos del texto, que la progresión es coherente | Claude Opus (agente independiente del diseñador) | Rol de verificación independiente: nunca el mismo agente que produjo lo verifica |
-| A8 | Coach metacognitivo | Generar el debrief semanal del aprendiz: dónde está, qué dominó, qué le falta, cómo se compara con su propio progreso anterior | Claude Sonnet | Necesita empatía + datos, no razonamiento pesado |
+| A8 | Coach metacognitivo | Generar el debrief semanal del aprendiz: dónde está, qué dominó, qué le falta, cómo se compara con su propio progreso anterior. **En MVP-2 reporta progreso contra el objetivo declarado en POA, no solo % de cobertura (D19).** | Claude Sonnet | Necesita empatía + datos, no razonamiento pesado |
 | A9 | Detector afectivo | Clasificar el estado emocional del aprendiz a partir de señales conductuales (latencia, longitud de respuesta, patrones de error, comportamiento de re-lectura) | Algorítmico + posible LLM ligero | Mayormente clasificación de patrones, no requiere modelo de razonamiento |
-| A10 | Verificador de cobertura | Verificar de manera independiente que el A2 asignó el 100% del texto sustantivo del PDF a alguna unidad de sentido. Aprobar o rechazar la ingestión por cobertura | Claude Opus (independiente del A2 y del A7) | Es un rol adversarial estricto; necesita razonamiento fino para distinguir contenido sustantivo del no-sustantivo, y no tener sesgo hacia aprobar lo que ya está hecho |
+| A10 | Verificador de cobertura | Verificar de manera independiente que el A2 asignó el 100% del texto sustantivo del PDF a alguna unidad de sentido. Aprobar o rechazar la ingestión por cobertura. **En modo libro (D15), opera solo sobre los capítulos núcleo de dominio.** | Claude Opus (independiente del A2 y del A7) | Es un rol adversarial estricto; necesita razonamiento fino para distinguir contenido sustantivo del no-sustantivo, y no tener sesgo hacia aprobar lo que ya está hecho |
+| **A11** | **Curador de corpus** | **Conducir la conversación de curaduría con el aprendiz cuando el corpus contiene libros (>80 pp) o múltiples PDFs heterogéneos (D14, D15). Recibe POA + estructura de los PDFs (TOC, longitud) como input. Propone curaduría: capítulos núcleo / lectura rápida / referenciales descartados; sugiere roles de PDF informados por el POA. El aprendiz acepta, ajusta o rechaza. La razón de cada decisión queda trazada en BD.** | **Claude Opus** | **Necesita razonamiento sobre estructura argumental + dialógico fino con el aprendiz. Activo desde MVP-2.** |
+| **A12** | **Entrevistador de objetivos** | **Conducir la entrevista de entrada cuando el aprendiz crea un curso nuevo, antes de subir PDFs (D18). Captura los 3 componentes del POA: contexto del aprendiz, objetivo del curso, conocimientos previos relevantes (D17). Produce un POA estructurado, lo muestra al aprendiz para confirmación, y lo persiste en BD del curso.** | **Claude Sonnet** | **Necesita empatía dialógica + estructura. No requiere razonamiento profundo sobre texto académico. Activo desde MVP-1.** |
 
 ## Know-how heredado de SILA en los agentes A2 y A3
 
@@ -350,26 +354,379 @@ D11 originalmente decía "MVP-1 = un PDF como input". Esta limitación necesita 
 - El grafo de prerequisitos es un grafo del curso, no de cada PDF.
 - El plan adaptativo del A5 opera sobre el grafo del curso, indistintamente de cuántos PDFs lo originaron.
 
+## Roles explícitos de PDFs en el corpus (D14)
+
+> Cerrada el 2026-04-11. Activa funcionalmente desde MVP-1.5. El modelo de datos del MVP-1 ya soporta la columna `role` aunque toda fila se inicialice con `principal`.
+
+Cada PDF del corpus declara explícitamente uno de cinco roles. El rol determina cómo el A2_corpus, el A3_corpus, el A4 (en runtime) y el A10 lo tratan.
+
+| Rol | Significado | Implicación pedagógica |
+|---|---|---|
+| **principal** | El texto central del curso o de una unidad temática. Fuente de los conceptos fundamentales. Puede haber varios PDFs principales en un mismo curso | Sus unidades tienen peso completo en el grafo, todas sus misconcepciones entran al catálogo, sus afirmaciones citables son prioritarias en el diseño de rúbricas. **Cobertura A10 = 100% obligatoria** |
+| **equivalente** | Texto al mismo nivel que un principal específico. Funcionalmente intercambiable en ciertos contextos | Sus unidades se fusionan con las del principal compatible en unidades multi-fuente convergente. **Cobertura A10 = 100% obligatoria** |
+| **complementario** | Texto que amplía, ejemplifica, aplica o matiza a los principales. No aporta conceptos nuevos fundamentales pero enriquece los existentes | Sus unidades se marcan como extensiones. Entran al grafo como nodos hoja que no bloquean el avance. Catálogo de misconcepciones hereda solo las suyas propias. **Cobertura A10 = 100% obligatoria** |
+| **referencial** | Texto citado como apoyo, fuente original o lectura recomendada que el aprendiz NO debe dominar en profundidad | Sus unidades NO entran al grafo de aprendibilidad. El A4 puede consultar su contenido en runtime para responder preguntas del aprendiz pero no se le evalúa comprensión. **Cobertura A10 = exenta** |
+| **contrapunto** | Texto incluido deliberadamente porque contradice o tensiona a los principales. Su valor está en la tensión | Sus unidades generan específicamente unidades multi-fuente en tensión en el diseño integrado. El A4 puede presentar preguntas adversariales que exigen posicionarse. **Cobertura A10 = 100% obligatoria** |
+
+### Flujo híbrido de asignación de roles
+
+1. El aprendiz **propone** un rol al subir cada PDF (control manual por defecto).
+2. Después de la Fase 1 del pipeline de ingestión (análisis individual, antes del cruce inter-textual), el **A2_corpus inspecciona** la propuesta, la contrasta con lo que ve en los textos **y con el POA del curso (D17)**, y puede sugerir ajustes justificados.
+3. **Ejemplo de sugerencia informada por POA:** "Para tu objetivo declarado de construir marco teórico sobre `capital social`, este libro de Putnam parece más bien `referencial` porque solo introduce el concepto sin desarrollarlo —¿lo cambiamos? El que sí lo desarrolla es Bourdieu, que ya marcaste como `principal`."
+4. El aprendiz **acepta, rechaza o mantiene** su asignación original. La decisión final es del aprendiz.
+5. La razón de cada decisión queda **trazada en la tabla `pdf_role_history`** de la BD: aprendiz_propuso, agente_sugirió, aprendiz_decidió_final, razón_libre.
+
+**Por qué híbrido y no automático:** la asignación de rol es una decisión metodológica del aprendiz que refleja su interpretación del curso. Automatizarla sería sustituir su criterio por el del modelo. Pero ignorar la lectura del A2_corpus tampoco es óptimo: puede notar incoherencias que el aprendiz no vio (un texto que marca como principal pero no contiene conceptos nuevos para los demás textos del corpus).
+
+---
+
+## A11 — Curador de corpus (modo libro y curaduría conversada) (D15)
+
+> Cerrada el 2026-04-11. Activo funcionalmente desde MVP-2. El modelo de datos del MVP-1 ya soporta las tablas `chapter_curation` y `book_processing_mode` aunque queden vacías.
+
+### Por qué existe este agente
+
+Un PDF de >80 páginas no puede procesarse con el flujo estándar:
+
+- **Costo:** procesar un libro completo con A2 + A10 cobertura 100% gasta tokens en capítulos que el aprendiz nunca necesitará dominar.
+- **Tiempo:** la ingestión tomaría horas en lugar de minutos.
+- **Adecuación pedagógica:** un libro académico tiene capítulos centrales, capítulos de contexto, y capítulos referenciales. Tratarlos como equivalentes es ignorar la curaduría que el propio autor ya hizo al estructurar su obra.
+
+El A11 conduce una conversación estructurada con el aprendiz **antes** de procesar el libro, decide qué capítulos entran en qué nivel de procesamiento, y produce una curaduría aceptada por el aprendiz que el resto del pipeline aplica.
+
+### 3 modos de procesamiento por tamaño
+
+| Tamaño del PDF | Modo | Pipeline |
+|---|---|---|
+| ≤30 páginas | **artículo** | A1 → A2 → A10 (cobertura 100%) → A3 → A7. Una sola pasada del A2 |
+| 30-80 páginas | **capítulo** | A1 → A2 (procesa por secciones en paralelo, integra después) → A10 (cobertura global) → A3 → A7. Misma calidad que modo artículo, ejecución optimizada |
+| >80 páginas | **libro** | A1 (extrae solo TOC + longitud por capítulo) → **A11 conduce curaduría** → A1 procesa solo los capítulos seleccionados → A2 → A10 (sobre los capítulos núcleo) → A3 → A7 |
+
+### 3 niveles de procesamiento dentro del modo libro
+
+Después de la conversación del A11 con el aprendiz, cada capítulo del libro queda clasificado en uno de tres niveles:
+
+| Nivel | Pipeline aplicado | Ejemplo de uso |
+|---|---|---|
+| **núcleo de dominio** | Pipeline completo (A1 → A2 → A10 cobertura 100% del capítulo → A3 → A7). El aprendiz será evaluado sobre estas unidades en el diálogo socrático | "Capítulos 1, 3, 4 y 7 son los que necesito dominar para mi seminario" |
+| **lectura rápida** | A2 extrae unidades pero **A3 genera solo instrucción canónica breve**, sin fallo productivo expandido ni catálogo de misconcepciones expandido. A10 verifica cobertura solo informativamente, sin gate. El aprendiz no es evaluado en estas unidades | "Capítulos 2 y 5 me los leo para tener contexto pero no necesito dominarlos" |
+| **referencial** | NO se procesa con A1+A2+A3. Queda disponible para que el A4 consulte fragmentos en runtime si el aprendiz pregunta algo específico | "Capítulos 6, 8 y 9 los descarto, son apéndices técnicos que no me sirven" |
+
+**Cobertura del 100% en modo libro:** se calcula **solo sobre los capítulos núcleo de dominio**, no sobre el libro completo. Los otros dos niveles tienen su propio régimen documentado en `chapter_curation.coverage_regime`.
+
+### Flujo conversacional del A11
+
+```
+A11 inicia conversación cuando: (D15: PDF >80 pp) OR (D14: corpus de N PDFs heterogéneos)
+                                                   │
+                                                   ▼
+1. A11 lee:
+   - POA del curso (D17, producido por A12)
+   - TOC + longitudes del PDF (producido por A1 fase 1)
+   - Estructura argumental gruesa (sección, subsecciones)
+                                                   │
+                                                   ▼
+2. A11 conduce la entrevista (5-10 min, conversacional, no formulario):
+   - "Veo que subiste [Putnam, Making Democracy Work, 280 pp]. Me dices que tu objetivo
+      es [X según POA]. ¿Para qué necesitas este libro específicamente?"
+   - "¿Algún capítulo es esencial sin lugar a dudas? ¿Tu asesor te recomendó alguno?"
+   - "¿Algún capítulo puedes saltar con seguridad?"
+   - "¿Este libro es principal en tu curso o más bien referencial?" (conecta con D14)
+                                                   │
+                                                   ▼
+3. A11 propone curaduría:
+   - "Mi propuesta: 1, 3, 4, 7 como núcleo; 2, 5 como lectura rápida;
+      6, 8, 9 como referenciales descartados. Esto da ~120 páginas a procesar
+      en lugar de 280, alineadas con tu objetivo de [X]"
+   - Justifica cada decisión
+                                                   │
+                                                   ▼
+4. Aprendiz acepta/ajusta/rechaza por capítulo
+                                                   │
+                                                   ▼
+5. A11 persiste la decisión final en chapter_curation con:
+   - chapter_id, chapter_title, level (núcleo|rápida|referencial)
+   - propuesto_por (a11|aprendiz), aceptado_por (aprendiz)
+   - razón (libre)
+                                                   │
+                                                   ▼
+6. A1 reanuda el procesamiento con la curaduría aplicada
+```
+
+### Por qué A11 no es A2 ni A7
+
+- **No es A2:** A2 hace análisis semántico de texto. La conversación con el aprendiz sobre qué leer es metodología pedagógica, no análisis de texto. Mezclar las dos diluye ambos roles.
+- **No es A7:** A7 audita fidelidad de citas. Una conversación con el aprendiz no es auditoría.
+- **No se colapsa con A12:** A12 entrevista al aprendiz **sobre sí mismo** (objetivo, contexto, conocimientos previos). A11 entrevista al aprendiz **sobre los textos** (qué capítulos, qué roles). Son dos conversaciones distintas con propósitos cognitivos diferentes. Mantenerlos separados permite que A12 corra una sola vez (al crear el curso) y A11 corra cada vez que se sube un libro o un corpus heterogéneo.
+
+---
+
+## A12 — Entrevistador de objetivos (POA) (D17, D18)
+
+> Cerrada el 2026-04-11. **Activo desde MVP-1.** Es el primer paso de todo curso nuevo, antes de que el aprendiz suba ningún PDF.
+
+### Por qué existe este agente
+
+Sin información sobre el aprendiz y su objetivo, el A3 diseña en el vacío. Las rúbricas son universales en lugar de calibradas, los problemas de fallo productivo son genéricos en lugar de contextualizados, las tareas generativas producen ejercicios en lugar de artefactos directamente útiles para el desafío real del aprendiz. La consecuencia es que Socrates degrada a "wrapper de ChatGPT con técnicas pedagógicas encima" — exactamente lo que el A9 sección 3 identificó como anti-patrón.
+
+El A12 captura el **Perfil de Objetivo del Aprendiz (POA)** en una entrevista breve (~5-8 min) al crear el curso. El POA es el input que permite al resto del pipeline calibrar.
+
+### Anclaje teórico: Ausubel (estricto)
+
+El POA está fundado en la teoría del **aprendizaje significativo de David Ausubel** (1963, 1968). Ausubel sostiene que el aprendizaje significativo (vs el mecánico) requiere tres condiciones simultáneas:
+
+1. **Material potencialmente significativo**: el contenido debe tener estructura lógica (lo provee el corpus + curaduría del A11).
+2. **Estructura cognitiva previa relevante**: el aprendiz debe tener anclajes conceptuales en los que conectar lo nuevo (lo captura el Componente 3 del POA: conocimientos previos relevantes).
+3. **Disposición del aprendiz**: el aprendiz debe querer aprender significativamente, no memorizar (lo captura el Componente 2 del POA: para qué quiere estar habilitado).
+
+Sin estas tres condiciones, lo que se produce es aprendizaje mecánico — exactamente la deuda cognitiva que Bastani et al. (2025) midieron en el escenario de wrapper. El POA es la operacionalización pragmática de las 3 condiciones de Ausubel en el flujo de Socrates.
+
+**Tarea pendiente para el cluster doctoral:** agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del artículo (1 párrafo en sección de fundamentación, 2 citas verbatim verificables). Esto NO bloquea Socrates pero sí refuerza la coherencia teórica del A9 con la operacionalización en código.
+
+### 3 componentes del POA
+
+**Componente 1 — Contexto del aprendiz**
+
+| Campo | Tipo | Pregunta del A12 |
+|---|---|---|
+| `learner_role` | enum | ¿Eres doctorando, máster, profesional que estudia, o investigador? |
+| `discipline` | text | ¿En qué disciplina estás trabajando? |
+| `program` | text | ¿En qué programa o institución? (opcional) |
+| `phase` | enum | ¿En qué fase de tu trabajo estás? (empezando / en medio / cerrando / postdoctoral) |
+| `research_field` | text | ¿Cuál es tu campo específico de investigación o trabajo? |
+
+**Componente 2 — Objetivo del curso**
+
+| Campo | Tipo | Pregunta del A12 |
+|---|---|---|
+| `target_challenge` | text | ¿Para qué desafío específico necesitas este aprendizaje? (examen, seminario, presentación, defensa, discusión con asesor, marco teórico, clase a dar, lectura de contexto para tesis, etc.) |
+| `target_capability` | text | ¿Para qué quieres estar habilitado al terminar? (reproducir, defender posición propia, aplicar a tu caso, explicar a otros, dialogar críticamente, sintetizar con otras fuentes) |
+| `success_signal` | text | ¿Qué considerarás tú mismo como señal de éxito al terminar el curso? |
+| `deadline` | date | ¿Cuándo debes estar habilitado? |
+
+**Componente 3 — Conocimientos previos relevantes (los anclajes de Ausubel)**
+
+| Campo | Tipo | Pregunta del A12 |
+|---|---|---|
+| `known_authors` | text[] | ¿Qué autores o conceptos de este campo ya conoces bien? |
+| `prior_readings` | text[] | ¿Qué has leído antes que se conecta con estos textos? |
+| `prior_ideas` | text | ¿Qué ideas previas tienes sobre los temas del curso que podrían ser puntos de anclaje o puntos de fricción? |
+| `theoretical_traditions` | text[] | ¿Hay tradiciones teóricas con las que ya trabajas y desde las cuales vas a leer estos textos? |
+
+### Flujo del A12
+
+```
+Aprendiz crea curso nuevo (nombre + deadline tentativo)
+                    │
+                    ▼
+A12 inicia conversación (no formulario):
+  - Se presenta brevemente
+  - Explica por qué pregunta esto (transparencia + Ausubel)
+  - Conduce los 3 componentes en orden conversacional
+  - Reformula preguntas si la respuesta es vaga
+  - Hace 1-2 follow-ups si detecta señal pero falta concreción
+                    │
+                    ▼
+A12 sintetiza el POA en formato estructurado
+                    │
+                    ▼
+A12 muestra el POA al aprendiz:
+  "Esto es lo que entendí. ¿Es correcto? ¿Falta algo importante?"
+                    │
+                    ▼
+Aprendiz acepta/edita/rechaza
+                    │
+                    ▼
+POA persistido en learner_objective_profile (asociado a course_id)
+                    │
+                    ▼
+Aprendiz puede subir PDFs (paso 2 del onboarding)
+                    │
+                    ▼
+A1 → A11 (si aplica D15 modo libro) → resto del pipeline
+   ↑                ↑
+   └────────────────┘
+   Todos reciben POA como input contextual
+```
+
+### Por qué A12 separado de A11
+
+| Característica | A12 (Entrevistador de objetivos) | A11 (Curador de corpus) |
+|---|---|---|
+| **Sobre qué pregunta** | El aprendiz mismo | Los textos del corpus |
+| **Cuándo corre** | Una sola vez al crear el curso | Cada vez que se sube un libro o corpus heterogéneo |
+| **Input necesario** | Nada (es el primer paso) | POA + estructura de los PDFs |
+| **Output** | POA estructurado | Curaduría de capítulos + roles ajustados |
+| **Modelo sugerido** | Sonnet (dialógico, no requiere razonamiento profundo) | Opus (requiere razonamiento sobre estructura argumental) |
+| **MVP de activación** | MVP-1 | MVP-2 |
+
+Colapsarlos en un solo "Curador de experiencia" mezcla dos conversaciones cognitivamente distintas. La conversación sobre objetivos es introspectiva (el aprendiz reflexiona sobre sí mismo); la conversación sobre curaduría de textos es analítica (el aprendiz evalúa material). Confundir las dos lleva a cuestionarios genéricos.
+
+---
+
+## Propagación del POA al A3 y al A4 (D19)
+
+> Cerrada el 2026-04-11. **Activa desde MVP-1.**
+
+El POA se persiste una sola vez en `learner_objective_profile` y se pasa como contexto en cada llamada LLM relevante.
+
+### A3 (Diseñador instruccional) recibe POA
+
+Cuando el A3 procesa una unidad de sentido para producir su secuencia pedagógica, recibe:
+
+- La unidad de sentido del A2 (texto fuente, glosario, posicionamiento)
+- **El POA completo del curso**
+
+Y produce, calibrado al POA:
+
+| Artefacto | Cómo el POA cambia el output |
+|---|---|
+| Problema de fallo productivo | **El problema conecta con el contexto real del aprendiz** (su disciplina, su campo de investigación, su desafío declarado), no es genérico |
+| Instrucción canónica | Misma instrucción para todos, pero **referencias a los autores que el aprendiz ya conoce** (Componente 3 del POA) cuando es pertinente |
+| Rúbrica de expectativas | **Elementos universales del concepto + elementos específicos del objetivo declarado.** Una unidad sobre "capital social" tendrá expectativas universales (definición, mecanismo, evidencia) + expectativas específicas si el aprendiz declaró que su objetivo es "construir marco teórico para defender mi propuesta de intervención comunitaria" |
+| Catálogo de misconcepciones | **Las misconcepciones más críticas para el objetivo específico se priorizan**. Si el aprendiz va a un seminario donde otro autor X domina el debate, las misconcepciones que confunden al texto del corpus con el de X se elevan al tope del catálogo |
+| Tarea generativa de cierre | **Produce un artefacto directamente útil para el desafío declarado.** Si el desafío es "marco teórico para tesis", la tarea Tier 2 es "redacta el párrafo de marco teórico que usarías para introducir este concepto en tu propia tesis", no "escribe un resumen de 300 palabras" |
+
+### A4 (Evaluador socrático) recibe POA en cada turno
+
+En cada turno del diálogo socrático, el A4 recibe:
+
+- El texto fuente de la unidad
+- La rúbrica del A3 (ya calibrada al POA)
+- El catálogo de misconcepciones
+- La historia del diálogo hasta ese turno
+- **El POA del curso**
+
+Y decide:
+
+| Decisión | Cómo el POA cambia la decisión |
+|---|---|
+| Tono del turno | Calibra al contexto: con un doctorando de filosofía política se habla distinto que con un magíster en gestión pública |
+| Énfasis de la pregunta | Las preguntas profundizan en los aspectos relevantes al objetivo declarado |
+| Acreditación del hito | Se acredita cuando hay **evidencia suficiente para el objetivo declarado**, no para un estándar universal abstracto. Esto NO significa "más laxo" — significa que la barra es la del objetivo real, no la de un examen genérico. Para algunos objetivos la barra puede ser más alta (defender posición frente a un crítico) y para otros más baja (explicar a un par) |
+| Reformulación | Las reformulaciones referencian el contexto real del aprendiz cuando es útil ("imagina que esto se aplica a tu propio campo de X...") |
+
+### Costo adicional de tokens
+
+- POA típico: ~1500-2000 tokens
+- Llamadas afectadas: cada llamada del A3 (una por unidad, una vez por curso) y cada turno del A4 (varias por sesión)
+- Costo proyectado adicional: < 5% del costo total del curso
+- **Aceptado.** El costo es proporcionalmente pequeño comparado con el beneficio de calibración real al aprendiz
+
+---
+
+## Sprints de aprendizaje como concepto de primera clase (D16)
+
+> Cerrada el 2026-04-11. **Modelo de datos lo soporta desde MVP-1** (latente). UI activa en MVP-1.5 (sprints temáticos para multi-PDF) y MVP-2 (sprints completos con A11 para libros).
+
+### Qué es un sprint
+
+Un sprint es un bloque temático coherente con su propio arco pedagógico:
+
+```
+SPRINT DE APRENDIZAJE
+├── Puerta de entrada: problema de fallo productivo que abre el bloque
+├── N unidades de sentido ordenadas por el grafo de prerequisitos
+├── Conexiones explícitas con sprints anteriores
+├── Acreditación del sprint: diálogo socrático que integra las unidades
+└── Producción de cierre del sprint: tarea generativa Tier 2 o 3 que exige síntesis
+```
+
+El aprendiz **acredita el sprint completo cuando puede integrar sus unidades en una respuesta coherente, no unidad por unidad**. La acreditación por sprint es adicional a la acreditación por unidad: las unidades siguen acreditándose individualmente, pero el sprint cierra cuando el A4 verifica que el aprendiz puede usar las unidades en conjunto.
+
+### Por qué es first-class y no una agrupación posterior
+
+- En un curso doctoral con un libro o multi-PDF extenso, el aprendizaje no es lineal por unidad. El aprendiz necesita organizar el trabajo en bloques manejables.
+- La acreditación integradora (el aprendiz puede sostener una respuesta coherente sobre las 5 unidades del sprint) es una métrica más fuerte que 5 acreditaciones aisladas.
+- Permite al A5 (Adaptador) recalcular el plan a granularidad de sprint, no solo de unidad.
+- El A8 (Coach metacognitivo, MVP-2) puede reportar progreso por sprint, lo que es motivacionalmente más útil que % de unidades.
+
+### 2 estrategias de división en sprints
+
+| Estrategia | Criterio | Cuándo usarla |
+|---|---|---|
+| **Capas de profundidad** | El mismo material se recorre varias veces, cada vez profundizando (Bloom L1-L2 primero, L3-L4 después, L5-L6 al final) | Cuando el material es complejo y el aprendiz tiene tiempo. Permite consolidación espaciada |
+| **Bloques temáticos** | El material se divide en secciones temáticas independientes, cada una dominada en profundidad antes de pasar al siguiente | Cuando hay presión de tiempo o cuando el material tiene estructura naturalmente modular |
+
+El aprendiz elige la estrategia en la conversación con el A11 (modo libro o corpus heterogéneo), informado por la sugerencia del A2_corpus según el carácter del texto.
+
+### Activación por MVP
+
+| MVP | Estado | Qué se entrega |
+|---|---|---|
+| **MVP-1** | Modelo de datos solamente (latente) | Tabla `sprint` existe en el esquema; cada curso tiene 1 sprint default que contiene todas las unidades. La UI no muestra "sprints" — el aprendiz ve el plan completo del curso |
+| **MVP-1.5** | UI activa para sprints temáticos | Cuando el corpus tiene N PDFs, el aprendiz puede agrupar PDFs en sprints temáticos manualmente. UI muestra la división |
+| **MVP-2** | Funcionalidad completa | A11 conduce conversación de curaduría con sugerencia de sprints según una de las dos estrategias. Acreditación integradora por sprint con A4 produciendo diálogo de cierre. A8 reporta progreso por sprint |
+
+### Modelo de datos (esbozo, se cierra en Fase 3)
+
+```sql
+CREATE TABLE sprint (
+  id              UUID PRIMARY KEY,
+  course_id       UUID REFERENCES course(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  strategy        TEXT CHECK (strategy IN ('layers', 'blocks', 'default')),
+  order_in_course INT NOT NULL,
+  state           TEXT CHECK (state IN ('not_started', 'in_progress', 'completed')),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE sense_unit_in_sprint (
+  unit_id         UUID REFERENCES sense_unit(id) ON DELETE CASCADE,
+  sprint_id       UUID REFERENCES sprint(id) ON DELETE CASCADE,
+  order_in_sprint INT NOT NULL,
+  PRIMARY KEY (unit_id, sprint_id)
+);
+```
+
+---
+
 ## Orquestación con n8n
 
 n8n es el orquestador propuesto porque es visual, soporta múltiples APIs nativamente, tiene cron incorporado para los disparadores temporales, y permite que el investigador modifique los flujos sin necesidad de programar cada cambio. La alternativa es código directo en el backend (Next.js API routes), que daría más control pero menos visibilidad y mayor costo de evolución. Decisión pendiente.
 
 ## Los tres flujos principales
 
-### Flujo 1 — Ingestión (una vez por curso, al cargar nuevo material)
+### Flujo 1 — Onboarding e ingestión (una vez por curso, al crear curso nuevo)
+
+> Actualizado el 2026-04-11 al cerrar D14-D19. Ahora el primer paso del flujo es la entrevista del A12 para capturar el POA, **antes** de subir cualquier PDF.
 
 ```
-Upload de PDFs/PPTs (PWA)
+Aprendiz crea curso nuevo (nombre + deadline tentativo)
        ↓
-Webhook n8n
+A12 — Entrevista de objetivos (~5-8 min)
        ↓
-A1 — Extrae texto y estructura
+   POA estructurado, confirmado por aprendiz, persistido en BD
+       ↓
+Aprendiz sube PDFs del corpus
+       ↓
+A1 — Extrae texto, estructura, TOC, longitud por sección
+       ↓
+¿Algún PDF >80 pp O corpus heterogéneo de N PDFs?
+       │
+       ├─ Sí → A11 (Curador de corpus) conduce conversación de curaduría
+       │       (recibe POA + estructura como input)
+       │       Aprendiz acepta/ajusta curaduría → persistida en chapter_curation
+       │
+       └─ No → continúa directo
+       ↓
+A1 reanuda: procesa solo capítulos núcleo + lectura rápida (descarta referenciales)
        ↓
 A2 — Construye unidades de sentido + grafo de prerequisitos
+       (recibe POA como contexto opcional para priorizar conceptos relevantes)
+       ↓
+A10 — Verifica cobertura del 100% sustantivo de los capítulos núcleo
+       │
+       ├─ FAIL → A2 reprocesa (max 3 iter, después FAIL_REVIEW manual)
+       │
+       └─ PASS → continúa
        ↓
 A3 — Para cada unidad, genera la secuencia pedagógica completa
+       (recibe POA como input → fallo productivo, rúbrica, catálogo,
+        tarea generativa CALIBRADAS al objetivo del aprendiz)
        ↓
-A6 — Genera visuales asociados (mapa del grafo, diagramas)
+A6 — Genera visuales asociados (mapa del grafo, diagramas) [MVP-2]
        ↓
 A7 — Audita fidelidad al texto fuente
        ↓

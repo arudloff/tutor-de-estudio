@@ -3,7 +3,7 @@
 > Lo que aún no se ha resuelto y debe resolverse antes (o durante) `/ingeniería`.
 > Cada decisión incluye opciones, criterio de evaluación y un favorito provisorio.
 
-## Estado de cierre (actualizado 2026-04-10)
+## Estado de cierre (actualizado 2026-04-11)
 
 | ID | Tema | Estado | Resolución | Documento |
 |---|---|---|---|---|
@@ -17,13 +17,21 @@
 | D8 | Telemetría | ⏸ PARCIAL | Esquema básico de eventos en MVP-1. Sofisticación en MVP-2 | — |
 | D9 | Privacidad | ⏸ DIFERIDA | Política mínima viable antes del primer usuario no-investigador | — |
 | D10 | Validación empírica | ⏸ DIFERIDA | Diseño cuasi-experimental para MVP-2 | — |
-| D11 | Definición de MVP-1 | ✅ CERRADA | 4-5 agentes activos, P1-P3 cubiertos, P4 parcial (sólo modelado experto), P5 ausente, P6 parcial. Modo único = examen, Bloom L1-L3 | docs/05 § 6 |
-| D12 | Integración con SILA | ✅ CERRADA | Internalización del know-how de SILA en los prompts de A2 y A3. SILA es ancestro metodológico, no componente runtime. Socrates procesa el PDF una sola vez con su propio pipeline | docs/05 § 10 |
-| D13 | Multi-PDF como capacidad arquitectónica | ✅ CERRADA | Multi-PDF es first-class desde el modelo de datos. MVP-1 entrega 1 PDF/curso para validar pipeline básico. MVP-1.5 activa multi-PDF con A2_corpus, A3_corpus y A10_corpus | docs/03 § Procesamiento multi-PDF |
+| D11 | Definición de MVP-1 | ✅ CERRADA (revisada 2026-04-11) | 6 agentes activos en MVP-1 (A1, A2, A3, A4, A7, A10, A12). P1-P3 cubiertos, P4 parcial, P5 ausente, P6 parcial. Modo único = examen, Bloom L1-L3. **POA obligatorio desde día uno** | docs/05 § 6, § 12 |
+| D12 | Integración con SILA | ✅ CERRADA | Internalización del know-how de SILA en los prompts de A2 y A3. SILA es ancestro metodológico, no componente runtime | docs/05 § 10 |
+| D13 | Multi-PDF como capacidad arquitectónica | ✅ CERRADA | Multi-PDF es first-class desde el modelo de datos. MVP-1 entrega 1 PDF/curso. MVP-1.5 activa multi-PDF con A2_corpus, A3_corpus y A10_corpus | docs/03 § Procesamiento multi-PDF |
+| **D14** | **Roles explícitos de PDFs en el corpus** | ✅ **CERRADA 2026-04-11** | Taxonomía de 5 roles: principal, equivalente, complementario, referencial, contrapunto. Flujo híbrido: aprendiz propone, A2_corpus sugiere ajustes informados por POA, aprendiz decide. Razón trazada en BD. **Activo desde MVP-1.5** | docs/03 § Roles de PDFs |
+| **D15** | **Modo libro y conversación de curaduría** | ✅ **CERRADA 2026-04-11** | 3 modos por tamaño: artículo (≤30 pp), capítulo (30-80 pp), libro (>80 pp). Modo libro requiere conversación con A11 (Curador de corpus, agente nuevo). 3 niveles dentro de libro: núcleo (pipeline completo), lectura rápida (A2 + A3 ligero), referencial (consulta runtime A4). Cobertura 100% del A10 se calcula solo sobre los capítulos núcleo. **Activo desde MVP-2** | docs/03 § A11 Curador |
+| **D16** | **Sprints de aprendizaje como concepto de primera clase** | ✅ **CERRADA 2026-04-11** | Sprint = bloque temático coherente con arco propio (puerta de entrada → unidades por grafo → conexiones → acreditación integradora → producción de cierre). 2 estrategias: capas de profundidad o bloques temáticos. **Modelo de datos lo soporta desde MVP-1** (latente). UI activa en MVP-1.5/MVP-2 | docs/03 § Sprints, docs/05 § 12 |
+| **D17** | **Perfil de Objetivo del Aprendiz (POA)** | ✅ **CERRADA 2026-04-11** | POA con 3 componentes (contexto del aprendiz, objetivo del curso, conocimientos previos relevantes) como input obligatorio al crear curso. Anclaje teórico: **Ausubel estricto** (las 3 condiciones del aprendizaje significativo). Terminología: "aprendizaje significativo" (Ausubel 1963/1968) — agregar referencia al A9 en próximo ciclo de corrección | docs/05 § 12 |
+| **D18** | **A12 Entrevistador de objetivos como agente nuevo** | ✅ **CERRADA 2026-04-11** | A12 separado de A11 (no se colapsan). Razón: dos conversaciones distintas — A12 es sobre el aprendiz, A11 es sobre los textos. A12 conduce la entrevista de entrada, antes de subir PDFs, y produce el POA. **Activo desde MVP-1** | docs/03 § A12 Entrevistador |
+| **D19** | **Propagación del POA al A3 y al A4 en runtime** | ✅ **CERRADA 2026-04-11** | POA persistido en BD del curso, pasado como contexto en cada llamada LLM relevante. A3 (diseño) recibe POA al generar fallo productivo, rúbrica, catálogo de misconcepciones y tarea generativa. A4 (runtime) recibe POA en cada turno del diálogo. Costo adicional: ~< 2000 tokens/llamada. Aceptado. A8 (MVP-2) reportará progreso contra el objetivo declarado | docs/03 § Propagación POA, docs/05 § 12 |
 
-**Nuevo agente añadido:** A10 (Verificador de cobertura) — separado del A2 y del A7 por exigencia del principio IV&V. Garantiza que el 100% del texto sustantivo del PDF queda cubierto por al menos una unidad de sentido.
+**Agentes activos del sistema (12 totales, actualizado 2026-04-11):** A1 (Lector), A2 (Analista semántico), A3 (Diseñador instruccional), A4 (Evaluador socrático), A5 (Adaptador), A6 (Productor visual), A7 (Auditor de fidelidad), A8 (Coach metacognitivo), A9 (Detector afectivo), A10 (Verificador de cobertura), **A11 (Curador de corpus)**, **A12 (Entrevistador de objetivos)**.
 
-**Decisiones bloqueantes de código:** todas cerradas. Listo para Fase 2 de /ingeniería.
+**Agentes activos en MVP-1:** A1, A2, A3, A4, A7, A10, **A12** (entrevista POA al crear curso). Total: 7 agentes en MVP-1 (uno más que el plan previo, por D18).
+
+**Decisiones bloqueantes de código:** todas cerradas. **D14-D19 cerradas el 2026-04-11.** Listo para Fase 2 de /ingeniería.
 
 ---
 

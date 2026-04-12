@@ -1,42 +1,58 @@
 # Socrates — Context Resume
 
 > **Para Claude (al retomar):** Lee este archivo primero. Da el snapshot mínimo necesario para reanudar el trabajo sin re-leer todo.
-> **Última actualización:** 2026-04-10
+> **Última actualización:** 2026-04-11
 
 ## En una línea
-Socrates es un tutor doctoral basado en IA que aplica los 6 principios pedagógicos del A9 del cluster doctoral, en fase de diseño pre-código.
+Socrates es un tutor doctoral basado en IA que aplica los 6 principios pedagógicos del A9 del cluster doctoral + Ausubel estricto como anclaje del POA. Fase 1 de /ingeniería COMPLETA al 2026-04-11. Listo para Fase 2.
 
-## Estado al cierre del snapshot intermedio (2026-04-10, tarde)
+## Estado al 2026-04-11 (cierre de Fase A: D14-D19)
 
 - Visión: ✓ cerrada (docs/01_VISION.md)
 - Principios pedagógicos: ✓ cerrados con evidencia (docs/02_PRINCIPIOS_PEDAGOGICOS.md)
-- Fundamentación teórica: ✓ artículo A9 del cluster doctoral, escrito y auditado (BORRADOR PASS)
-- Arquitectura conceptual: ✓ 10 agentes (A1-A10) + conversación de curaduría propuesta (A11, A12) en docs/03
-- Fase 1 de /ingeniería (Estrategia): ✓ cerrada en docs/05_ESTRATEGIA.md
-- Decisiones cerradas (8): D1, D2, D4 revisada, D5, D6, D11, D12, D13 — ver docs/04
+- Fundamentación teórica: ✓ A9 del cluster + ✓ Ausubel estricto como anclaje del POA
+- Arquitectura conceptual: ✓ **12 agentes** (A1-A12) en docs/03, con A11 (Curador de corpus) y A12 (Entrevistador de objetivos) ya integrados, no solo propuestos
+- Fase 1 de /ingeniería (Estrategia): ✓ COMPLETA en docs/05_ESTRATEGIA.md, secciones 1-12
+- **Decisiones cerradas (14):** D1, D2, D4 revisada, D5, D6, D11 (revisada 2026-04-11), D12, D13, **D14, D15, D16, D17, D18, D19** — ver docs/04
 - Decisiones diferidas (4): D3, D7, D8, D9, D10 — ver docs/04
-- **Decisiones propuestas PENDIENTES de confirmación (6): D14, D15, D16, D17, D18, D19 — ver docs/99_DECISIONES_PENDIENTES.md**
-- Código: ✗ todavía no
-- Repo GitHub: ✓ arudloff/tutor-de-estudio, 3 commits, main actualizado
-- BITÁCORA: ✓ registrado como `tutor-de-estudio`, sesión 2026-04-10 journaleada
+- Código: ✗ todavía no — pendiente Fase 2 y Fase 3 antes de implementación
+- Repo GitHub: ✓ arudloff/tutor-de-estudio, pendiente push de cambios del 2026-04-11
+- BITÁCORA: ✓ sesión 2026-04-11 journaleada
 
-## Qué tocar primero al retomar (CRÍTICO)
+## Qué tocar primero al retomar (próxima sesión)
 
-1. **Leer `docs/99_DECISIONES_PENDIENTES.md`** — tiene las 6 propuestas que quedaron sin confirmar.
-2. **Responder las confirmaciones** — cada decisión tiene una pregunta específica. Idealmente responder las seis en bloque.
-3. **Primer punto no resuelto:** la pregunta conceptual sobre si "experiencia de aprendizaje significativo" se usa en el sentido de Ausubel (con las tres condiciones) o en sentido amplio. Esta respuesta determina si agregamos Ausubel como referencia al A9 en el próximo ciclo de corrección del artículo doctoral.
-4. **Después de cerrar D14-D19:** actualizar docs/03 (arquitectura ampliada con A11 y A12), docs/04 (D14-D19 pasadas a CERRADAS), docs/05 (sección nueva sobre POA y modo libro), PROJECT_STATE, commit + push.
-5. **Recién después:** avanzar a Fase 2 de /ingeniería (docs/06_PROCESOS.md).
+1. **Leer `docs/05_ESTRATEGIA.md` § 11** — POA, curaduría conversada y sprints (resumen del cierre del 2026-04-11).
+2. **Leer `docs/03_ARQUITECTURA_MULTI_AGENTE.md` § A11, § A12 y § Roles de PDFs** — los nuevos componentes integrados.
+3. **Avanzar a Fase 2 de /ingeniería (`docs/06_PROCESOS.md`):**
+   - Service Blueprint de los 4 procesos centrales
+   - Modelo tripartito de Barros para los 4 procesos
+   - State machines: curso, POA, PDF, unidad, sesión, hito, sprint, corpus, chapter_curation
+   - SIPOC del sistema completo
+   - User Story Map con corte MVP-1 / MVP-1.5 / MVP-2
+4. **Después: Fase 3 de /ingeniería (`docs/07_REQUISITOS.md`):**
+   - User stories INVEST con criterios Given-When-Then
+   - 3+ ejemplos por story
+   - Modelo de datos formal con RLS
+   - NFRs medibles
+5. **Recién entonces: Implementación del MVP-1 con auditoría YUNQUE por feature** (sprints S0-S6).
 
-## El origen de las 6 decisiones pendientes
+## El cierre de D14-D19 (2026-04-11)
 
-Durante la sesión del 2026-04-10 surgieron tres ideas del investigador que requieren formalización:
+Las 6 decisiones que estaban en estado PROPUESTA al cierre del 2026-04-10 fueron CERRADAS el 2026-04-11 con la confirmación del investigador ("acojo tus sugerencias"). La pregunta conceptual sobre Ausubel quedó resuelta: **Ausubel estricto** (las 3 condiciones del aprendizaje significativo). Se debe agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del cluster doctoral (NO bloquea Socrates).
 
-**Idea A (D14-D16):** al incorporar varios PDFs, indicar el rol de cada uno (principal, equivalente, complementario, referencial, contrapunto); soportar libros con conversación de curaduría; sprints de aprendizaje por capas o bloques.
+**Las 6 decisiones cerradas:**
+- D14: 5 roles explícitos de PDFs + flujo híbrido de asignación
+- D15: Modo libro con A11 nuevo y 3 niveles (núcleo/rápida/referencial)
+- D16: Sprints first-class desde el modelo de datos
+- D17: POA con anclaje en Ausubel estricto (3 componentes, 13 campos)
+- D18: A12 Entrevistador de objetivos como agente nuevo separado del A11
+- D19: POA propagado a A3 (diseño) y A4 (runtime)
 
-**Idea B (D17-D19):** Socrates debe conocer el objetivo del aprendiz (qué desafío espera resolver, para qué quiere estar habilitado) y es diseñador de experiencias de **aprendizaje significativo** — no solo entregador de contenido. Esto implica un Perfil de Objetivo del Aprendiz (POA) como input obligatorio, un agente nuevo A12 que lo captura, y propagación del POA al A3 (diseño) y al A4 (runtime).
-
-Ambas ideas son de diseño, no de implementación. Son el momento correcto para incorporarlas porque la Fase 2 de /ingeniería (Service Blueprint, state machines, User Story Map) necesita saber si existen POA, A11, A12, modo libro y sprints antes de poder modelarlas.
+**Cambios en MVP-1:**
+- 6 agentes activos en lugar de 5: A1, A2, A3, A4, A7, A10 + **A12** (entrevista POA al crear curso)
+- Primer paso del onboarding cambia: A12 antes de subir PDFs
+- Modelo de datos del MVP-1 incluye `learner_objective_profile`, `pdf_role`, `sprint`, `chapter_curation` (los 3 últimos latentes)
+- Costo proyectado del MVP-1: < $10.50/curso
 
 ## Tareas que quedan después de cerrar D14-D19
 

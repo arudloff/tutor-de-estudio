@@ -570,7 +570,112 @@ SILA es ancestro metodológico de Socrates exactamente del mismo modo que el A9 
 
 ---
 
-## 11. Output: lo que esta Fase 1 entrega como input para la Fase 2
+## 11. POA, curaduría conversada y sprints (D14-D19, cerradas el 2026-04-11)
+
+> Esta sección amplía la Fase 1 con las decisiones D14-D19 cerradas el 2026-04-11. Las decisiones formalizan dos ideas que el investigador planteó al final de la sesión del 2026-04-10: (A) los PDFs en multi-PDF deben tener roles distintos y los libros requieren curaduría conversada; (B) Socrates debe conocer el objetivo del aprendiz para diseñar experiencias de aprendizaje significativo en el sentido de Ausubel.
+
+### 11.1 La regla teórica: Ausubel estricto
+
+Socrates no es un sistema que aplica técnicas pedagógicas encima de entrega de contenido. Es un **diseñador de experiencias de aprendizaje significativo en el sentido de David Ausubel** (1963, 1968). Ausubel distingue dos modos de aprendizaje: significativo (el material nuevo se conecta de modo no arbitrario con la estructura cognitiva del aprendiz) y mecánico (el material se incorpora aislado, por repetición). Para que el aprendizaje sea significativo, las **tres condiciones** deben cumplirse simultáneamente:
+
+1. **Material potencialmente significativo:** el contenido debe tener estructura lógica.
+2. **Estructura cognitiva previa relevante:** el aprendiz debe tener anclajes conceptuales en los que conectar lo nuevo.
+3. **Disposición del aprendiz:** el aprendiz debe querer aprender significativamente, no solo memorizar.
+
+El POA (Perfil de Objetivo del Aprendiz) es la operacionalización pragmática de las tres condiciones de Ausubel en el flujo de Socrates:
+
+| Condición de Ausubel | Operacionalización en Socrates |
+|---|---|
+| Material potencialmente significativo | Corpus + curaduría del A11 (D15) + roles explícitos de PDFs (D14) |
+| Estructura cognitiva previa relevante | Componente 3 del POA: conocimientos previos relevantes (autores conocidos, lecturas previas, ideas previas, tradiciones teóricas) — capturados por A12 (D17, D18) |
+| Disposición del aprendiz | Componente 2 del POA: para qué quiere estar habilitado, qué desafío específico debe resolver — capturados por A12 (D17, D18) |
+
+**Tarea pendiente para el cluster doctoral (NO bloquea Socrates):** agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del artículo (1 párrafo en sección de fundamentación, 2 citas verbatim verificables).
+
+### 11.2 POA: Perfil de Objetivo del Aprendiz (D17, D18)
+
+**Definición:** estructura de datos persistida una vez por curso (al crearlo) que captura quién es el aprendiz, para qué quiere aprender, y qué ya sabe. Es input obligatorio del A3 (en diseño) y del A4 (en runtime).
+
+**Captura:** el agente A12 (Entrevistador de objetivos, nuevo) conduce una entrevista conversacional de ~5-8 minutos al crear el curso, **antes** de que el aprendiz suba cualquier PDF.
+
+**Componentes:** ver `docs/03 § A12` para el esquema completo. En resumen: contexto del aprendiz (5 campos), objetivo del curso (4 campos), conocimientos previos relevantes (4 campos).
+
+**Propagación (D19):** el POA se pasa como contexto en cada llamada LLM relevante:
+
+- **A3 (diseño, una vez por unidad):** calibra fallo productivo, rúbrica, catálogo de misconcepciones y tarea generativa al objetivo declarado.
+- **A4 (runtime, cada turno del diálogo):** calibra tono, énfasis y criterio de acreditación al objetivo declarado.
+- **A8 (MVP-2, semanal):** reporta progreso contra el objetivo declarado, no solo % de cobertura.
+
+**Costo adicional:** ~< 5% del costo total del curso. Aceptado.
+
+### 11.3 Roles explícitos de PDFs (D14)
+
+Cada PDF del corpus declara uno de **cinco roles**: principal, equivalente, complementario, referencial, contrapunto. Ver `docs/03 § Roles de PDFs` para la taxonomía completa y el flujo híbrido de asignación (aprendiz propone, A2_corpus sugiere informado por POA, aprendiz decide, razón trazada).
+
+**Activación:** modelo de datos lo soporta desde MVP-1 (toda fila default = `principal`). Funcionalidad activa desde MVP-1.5 cuando hay multi-PDF.
+
+### 11.4 Modo libro y curaduría conversada (D15, A11)
+
+PDFs >80 páginas activan el **modo libro**, que requiere conversación previa con el agente A11 (Curador de corpus, nuevo) antes de procesar. La conversación divide los capítulos en tres niveles:
+
+- **Núcleo de dominio:** pipeline completo (A2 + A10 cobertura 100% del capítulo + A3 + A7).
+- **Lectura rápida:** A2 extrae unidades, A3 produce solo instrucción canónica breve, sin evaluación adversarial.
+- **Referencial:** no se procesa, queda disponible para consulta del A4 en runtime.
+
+**Cobertura del A10 en modo libro:** se calcula solo sobre los capítulos núcleo, no sobre el libro completo.
+
+**Activación:** MVP-2 (modelo de datos preparado en MVP-1).
+
+### 11.5 Sprints de aprendizaje como concepto de primera clase (D16)
+
+Un **sprint** es un bloque temático coherente con su propio arco pedagógico (puerta de entrada → unidades por grafo → conexiones → acreditación integradora → producción de cierre). El aprendiz acredita el sprint completo cuando puede **integrar sus unidades en una respuesta coherente**, no unidad por unidad.
+
+**Dos estrategias de división:**
+
+- **Capas de profundidad:** mismo material recorrido varias veces, profundizando.
+- **Bloques temáticos:** secciones independientes, cada una dominada antes de la siguiente.
+
+**Activación por MVP:**
+
+| MVP | Estado |
+|---|---|
+| MVP-1 | Modelo de datos solamente. Cada curso tiene 1 sprint default que contiene todas las unidades. UI no muestra sprints |
+| MVP-1.5 | UI activa para sprints temáticos cuando hay multi-PDF |
+| MVP-2 | A11 sugiere sprints durante curaduría. Acreditación integradora con A4. A8 reporta progreso por sprint |
+
+### 11.6 Cambios en el MVP-1 derivados del cierre de D14-D19
+
+| Aspecto | Antes del 2026-04-11 | Después del 2026-04-11 |
+|---|---|---|
+| Agentes activos | 5 (A1, A2, A3, A4, A7) | **6 + A12** (A1, A2, A3, A4, A7, A10, A12) |
+| Primer paso del onboarding | Subir PDF | **Entrevista del A12 → POA** |
+| Inputs del A3 | Unidades del A2 | Unidades del A2 + **POA** |
+| Inputs del A4 (cada turno) | Texto + rúbrica + historia | Texto + rúbrica + historia + **POA** |
+| Modelo de datos del MVP-1 | Sin sprint, sin POA, sin role | **Incluye `learner_objective_profile`, `pdf_role`, `sprint`, `chapter_curation` (estos últimos latentes)** |
+| Costo total proyectado MVP-1 | < $10/curso | **< $10.50/curso** (POA agrega ~5%) |
+
+**Lo que NO cambia en el MVP-1:**
+
+- Sigue siendo 1 PDF/curso (D11). Multi-PDF a MVP-1.5.
+- Sigue siendo modo único = examen.
+- Bloom L1-L3.
+- Principios pedagógicos cubiertos: P1, P2, P3 completos; P4 parcial (modelado experto); P5 ausente; P6 parcial.
+- A11 NO está activo en MVP-1 (modelo de datos preparado, lógica diferida a MVP-2).
+
+### 11.7 Cuatro procesos centrales actualizados
+
+Después del cierre de D14-D19, los procesos centrales del sistema son **cuatro**, no tres:
+
+1. **Onboarding del curso (NUEVO en MVP-1):** A12 captura el POA → A11 cura el corpus (si aplica modo libro o multi-PDF heterogéneo) → POA y curaduría persistidos.
+2. **Ingestión de material:** pipeline A1 → A2 → A10 → A3 → A7 con POA en contexto del A3.
+3. **Sesión de aprendizaje:** A4 conduce diálogo con POA en contexto, A5 recalcula plan, A8 (MVP-2) reporta progreso por sprint contra POA.
+4. **Acreditación de hito o sprint:** A4 ejecuta diálogo socrático estructurado → decisión PASS/FAIL → recálculo del A5.
+
+Estos cuatro procesos son los que la Fase 2 de /ingeniería (`docs/06_PROCESOS.md`) modelará con Service Blueprint, modelo tripartito de Barros, state machines y SIPOC.
+
+---
+
+## 12. Output: lo que esta Fase 1 entrega como input para la Fase 2
 
 Para entrar a la Fase 2 de `/ingeniería` (Diseño de Procesos), tenemos:
 
@@ -578,17 +683,19 @@ Para entrar a la Fase 2 de `/ingeniería` (Diseño de Procesos), tenemos:
 - ✅ Pains y gains mapeados con relievers/creators específicos
 - ✅ Impact map del objetivo a las features
 - ✅ Features clasificadas por Kano
-- ✅ MoSCoW completo del MVP-1 con tres procesos centrales identificados:
-  1. **Ingestión de material** (subir PDFs → grafo + lecciones base)
-  2. **Sesión de aprendizaje** (notificación → micro-lección → diálogo → acreditación)
-  3. **Acreditación de hito** (diálogo socrático estructurado → decisión PASS/FAIL → recalculo)
-- ✅ Decisiones técnicas bloqueantes resueltas (D1, D2, D4, D5, D6, D11)
+- ✅ MoSCoW completo del MVP-1 con **cuatro procesos centrales** identificados (revisión 2026-04-11):
+  1. **Onboarding del curso** (A12 captura POA → A11 cura corpus si aplica → POA y curaduría persistidos) — NUEVO
+  2. **Ingestión de material** (A1 → A2 → A10 → A3 → A7 con POA en contexto del A3)
+  3. **Sesión de aprendizaje** (A4 dialoga con POA en contexto, A5 recalcula plan)
+  4. **Acreditación de hito o sprint** (diálogo socrático estructurado → decisión PASS/FAIL → recálculo del A5)
+- ✅ Decisiones técnicas bloqueantes resueltas (D1, D2, D4, D5, D6, D11, D12, D13, **D14, D15, D16, D17, D18, D19**)
+- ✅ Anclaje teórico explícito: Ausubel estricto (1963/1968)
 - ✅ Métricas de éxito definidas
 - ✅ Restricciones críticas explícitas
 
 **Lo que la Fase 2 producirá:**
-- Service blueprint del proceso central (sesión de aprendizaje)
-- Modelo tripartito de Barros para los tres procesos centrales
-- State machines para curso, unidad, sesión y hito
+- Service blueprint de los cuatro procesos centrales (con énfasis en Onboarding y Sesión de aprendizaje)
+- Modelo tripartito de Barros para los cuatro procesos
+- State machines para curso, POA, PDF, unidad, sesión, hito, sprint, corpus, chapter_curation
 - SIPOC del sistema completo
-- User Story Map con corte explícito MVP-1
+- User Story Map con corte explícito MVP-1 / MVP-1.5 / MVP-2

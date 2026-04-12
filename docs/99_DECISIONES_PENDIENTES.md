@@ -1,8 +1,37 @@
-# 99 — Decisiones propuestas pendientes de confirmación
+# 99 — Decisiones D14-D19 (CERRADAS el 2026-04-11)
 
-> **Estado:** Propuestas articuladas al cierre de la sesión del 2026-04-10 pero NO confirmadas por el investigador.
-> **Al retomar:** revisar este documento primero, responder las confirmaciones, y recién entonces tocar docs/03, docs/04, docs/05.
-> **NO mover a estado CERRADA sin confirmación explícita del investigador.**
+> **Estado:** ✅ **TODAS CERRADAS el 2026-04-11.** El investigador confirmó las 6 propuestas en bloque, instrucción literal: "acojo tus sugerencias".
+> **Pregunta conceptual de Ausubel:** RESUELTA — Ausubel **estricto** (las 3 condiciones: material potencialmente significativo + estructura cognitiva previa relevante + disposición del aprendiz). Se debe agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del artículo doctoral.
+> **Documento de origen** preservado abajo como referencia histórica del análisis previo a la confirmación. Las versiones canónicas de cada decisión viven ahora en `docs/04_DECISIONES_ABIERTAS.md`, `docs/03_ARQUITECTURA_MULTI_AGENTE.md` y `docs/05_ESTRATEGIA.md` § 12 (POA y curaduría de corpus).
+
+---
+
+## Resumen de cierre (2026-04-11)
+
+| ID | Estado al 2026-04-10 | Estado al 2026-04-11 | Cambios respecto a la propuesta original |
+|---|---|---|---|
+| D14 | PROPUESTA | ✅ CERRADA | Sin cambios. 5 roles + flujo híbrido aceptados tal cual |
+| D15 | PROPUESTA | ✅ CERRADA | Sin cambios. 3 modos por tamaño + A11 nuevo + 3 niveles aceptados |
+| D16 | PROPUESTA | ✅ CERRADA | Sin cambios. Sprint first-class desde MVP-1 (modelo de datos) + 2 estrategias + activación funcional MVP-2 |
+| D17 | PROPUESTA | ✅ CERRADA | Sin cambios + **anclaje teórico = Ausubel estricto**. Terminología: "aprendizaje significativo" (Ausubel) |
+| D18 | PROPUESTA | ✅ CERRADA | Sin cambios. A12 mantenido como agente nuevo separado del A11 |
+| D19 | PROPUESTA | ✅ CERRADA | Sin cambios. POA propagado a A3 (diseño) y A4 (runtime) |
+
+**Consecuencias inmediatas:**
+
+1. Lista de agentes pasa de 10 (A1-A10) a **12 agentes** (A1-A10 + A11 Curador de corpus + A12 Entrevistador de objetivos). Documentado en `docs/03_ARQUITECTURA_MULTI_AGENTE.md`.
+2. Modelo de datos del MVP-1 incorpora desde día uno: `learner_objective_profile`, `pdf_role`, `sprint`, `chapter_curation` (latentes en MVP-1, activos en MVP-1.5/MVP-2 según cada caso).
+3. Onboarding del MVP-1 cambia: el primer paso al crear curso es la entrevista del A12, **antes** de subir PDFs.
+4. A3 y A4 reciben POA en cada llamada LLM. Costo proyectado adicional: ~< 2000 tokens por llamada. Aceptado.
+5. Próximo ciclo de corrección del A9 debe agregar Ausubel 1963/1968 como referencia (1 párrafo de fundamentación, 2 citas verbatim verificables). **Tarea pendiente para el cluster doctoral, no bloquea Socrates**.
+
+**Desbloqueo:** ahora se puede avanzar a Fase 2 de /ingeniería (`docs/06_PROCESOS.md`).
+
+---
+
+## Documento histórico (estado al 2026-04-10, preservado para auditoría)
+
+> Lo que sigue es el documento original tal como se escribió al cierre del 2026-04-10. Se preserva como evidencia del razonamiento previo a la confirmación. Si hay discrepancia entre este documento y `docs/03`, `docs/04` o `docs/05`, **prevalecen los tres documentos canónicos**, no este histórico.
 
 ---
 
