@@ -7,6 +7,7 @@ package-lock.json.backup
 out/
 build/
 dist/
+*.tsbuildinfo
 
 # Environment variables (NEVER commit secrets)
 # NOTA: .env.example SI se commitea (contiene solo nombres y placeholders)
