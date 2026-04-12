@@ -364,6 +364,31 @@ export interface Database {
         Insert: { id?: string; unit_id: string; agent: string; iter?: number; cite_results: Json; pass: boolean; created_at?: string }
         Update: { id?: string; unit_id?: string; agent?: string; iter?: number; cite_results?: Json; pass?: boolean; created_at?: string }
       }
+      learning_session: {
+        Row: { id: string; course_id: string; unit_id: string; state: string; started_at: string | null; closed_at: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; course_id: string; unit_id: string; state?: string; started_at?: string | null; closed_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; course_id?: string; unit_id?: string; state?: string; started_at?: string | null; closed_at?: string | null; created_at?: string; updated_at?: string }
+      }
+      attempt: {
+        Row: { id: string; session_id: string; attempt_type: string; content: string; evaluation: Json | null; created_at: string }
+        Insert: { id?: string; session_id: string; attempt_type: string; content: string; evaluation?: Json | null; created_at?: string }
+        Update: { id?: string; session_id?: string; attempt_type?: string; content?: string; evaluation?: Json | null; created_at?: string }
+      }
+      hito_accreditation: {
+        Row: { id: string; unit_id: string; session_id: string; result: string; evidence: Json; reason: string | null; created_at: string }
+        Insert: { id?: string; unit_id: string; session_id: string; result: string; evidence: Json; reason?: string | null; created_at?: string }
+        Update: { id?: string; unit_id?: string; session_id?: string; result?: string; evidence?: Json; reason?: string | null; created_at?: string }
+      }
+      artifact: {
+        Row: { id: string; unit_id: string; session_id: string; task_id: string; format: string; content: string; word_count: number; created_at: string }
+        Insert: { id?: string; unit_id: string; session_id: string; task_id: string; format: string; content: string; word_count: number; created_at?: string }
+        Update: { id?: string; unit_id?: string; session_id?: string; task_id?: string; format?: string; content?: string; word_count?: number; created_at?: string }
+      }
+      learning_plan: {
+        Row: { id: string; course_id: string; next_unit_id: string | null; progress_pct: number; projected_finish: string | null; at_risk: boolean; gap_days: number | null; recalculated_at: string }
+        Insert: { id?: string; course_id: string; next_unit_id?: string | null; progress_pct?: number; projected_finish?: string | null; at_risk?: boolean; gap_days?: number | null }
+        Update: { id?: string; course_id?: string; next_unit_id?: string | null; progress_pct?: number; projected_finish?: string | null; at_risk?: boolean; gap_days?: number | null; recalculated_at?: string }
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
