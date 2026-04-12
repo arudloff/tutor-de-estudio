@@ -71,12 +71,119 @@ export interface Database {
           updated_at?: string
         }
       }
+      learner_objective_profile: {
+        Row: {
+          id: string
+          course_id: string
+          state: PoaState
+          learner_role: string | null
+          discipline: string | null
+          program: string | null
+          phase: 'starting' | 'middle' | 'closing' | 'postdoctoral' | null
+          research_field: string | null
+          target_challenge: string | null
+          target_capability: string | null
+          success_signal: string | null
+          target_deadline: string | null
+          known_authors: string[] | null
+          prior_readings: string[] | null
+          prior_ideas: string | null
+          theoretical_traditions: string[] | null
+          confirmed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          state?: PoaState
+          learner_role?: string | null
+          discipline?: string | null
+          program?: string | null
+          phase?: 'starting' | 'middle' | 'closing' | 'postdoctoral' | null
+          research_field?: string | null
+          target_challenge?: string | null
+          target_capability?: string | null
+          success_signal?: string | null
+          target_deadline?: string | null
+          known_authors?: string[] | null
+          prior_readings?: string[] | null
+          prior_ideas?: string | null
+          theoretical_traditions?: string[] | null
+          confirmed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          state?: PoaState
+          learner_role?: string | null
+          discipline?: string | null
+          program?: string | null
+          phase?: 'starting' | 'middle' | 'closing' | 'postdoctoral' | null
+          research_field?: string | null
+          target_challenge?: string | null
+          target_capability?: string | null
+          success_signal?: string | null
+          target_deadline?: string | null
+          known_authors?: string[] | null
+          prior_readings?: string[] | null
+          prior_ideas?: string | null
+          theoretical_traditions?: string[] | null
+          confirmed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      message_log: {
+        Row: {
+          id: string
+          course_id: string
+          session_id: string | null
+          agent: 'a4' | 'a12' | 'a11' | 'learner'
+          role: 'user' | 'assistant' | 'system'
+          content: string
+          tokens: number | null
+          latency_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          session_id?: string | null
+          agent: 'a4' | 'a12' | 'a11' | 'learner'
+          role: 'user' | 'assistant' | 'system'
+          content: string
+          tokens?: number | null
+          latency_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          session_id?: string | null
+          agent?: 'a4' | 'a12' | 'a11' | 'learner'
+          role?: 'user' | 'assistant' | 'system'
+          content?: string
+          tokens?: number | null
+          latency_ms?: number | null
+          created_at?: string
+        }
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: Record<string, never>
   }
 }
+
+export type PoaState =
+  | 'empty'
+  | 'in_interview'
+  | 'captured'
+  | 'confirmed_by_learner'
+  | 'updating'
 
 export type CourseState =
   | 'draft'

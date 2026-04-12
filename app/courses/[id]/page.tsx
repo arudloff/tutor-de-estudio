@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { InterviewChat } from './interview-chat'
 
 interface Props {
   params: { id: string }
@@ -67,15 +68,24 @@ export default async function CoursePage({ params }: Props) {
       </header>
 
       {course.state === 'draft' && (
-        <section className="rounded border border-accent/30 bg-accent/5 p-6">
-          <h2 className="text-lg font-medium mb-2">Siguiente paso: conocerte</h2>
+        <section>
+          <h2 className="text-lg font-medium mb-2">Conocerte antes de empezar</h2>
           <p className="text-sm text-muted mb-4">
             Antes de subir material, Socrates necesita entender quién eres,
             qué objetivo tienes con este curso, y qué ya sabes del tema.
-            Esto calibra toda la experiencia a tu contexto real.
+            Esto calibra toda la experiencia a tu contexto real (Ausubel).
           </p>
-          <p className="text-sm font-medium text-accent">
-            La entrevista del tutor estará disponible en el Sprint S2.
+          <InterviewChat courseId={course.id} />
+        </section>
+      )}
+
+      {course.state === 'poa_captured' && (
+        <section className="rounded border border-accent/30 bg-accent/5 p-6">
+          <h2 className="text-lg font-medium mb-2">Objetivo capturado</h2>
+          <p className="text-sm text-muted mb-4">
+            Tu perfil de aprendizaje ha sido capturado. El siguiente paso es
+            subir tu material (PDFs). Esta funcionalidad estará disponible en
+            el Sprint S3.
           </p>
         </section>
       )}
