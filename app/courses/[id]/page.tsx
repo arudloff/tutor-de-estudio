@@ -83,19 +83,36 @@ export default async function CoursePage({ params }: Props) {
         <section className="rounded border border-accent/30 bg-accent/5 p-6">
           <h2 className="text-lg font-medium mb-2">Objetivo capturado</h2>
           <p className="text-sm text-muted mb-4">
-            Tu perfil de aprendizaje ha sido capturado. El siguiente paso es
-            subir tu material (PDFs). Esta funcionalidad estará disponible en
-            el Sprint S3.
+            Tu perfil de aprendizaje ha sido capturado. Sube tu material para
+            continuar.
+          </p>
+        </section>
+      )}
+
+      {course.state === 'ingesting' && (
+        <section className="rounded border border-stone-200 p-6">
+          <h2 className="text-lg font-medium mb-2">Procesando tu material...</h2>
+          <p className="text-sm text-muted">
+            Socrates está analizando tu PDF, creando las unidades de sentido
+            y diseñando las lecciones calibradas a tu objetivo.
           </p>
         </section>
       )}
 
       {course.state === 'active' && (
-        <section className="rounded border border-stone-200 p-6">
-          <h2 className="text-lg font-medium mb-2">Sesión de aprendizaje</h2>
-          <p className="text-sm text-muted">
-            Las sesiones de aprendizaje estarán disponibles en el Sprint S5.
-          </p>
+        <section className="space-y-6">
+          <div className="rounded border border-stone-200 p-6">
+            <h2 className="text-lg font-medium mb-4">Tu progreso</h2>
+            <p className="text-sm text-muted mb-2">
+              Carga el dashboard para ver tu avance detallado.
+            </p>
+            <a
+              href={`/courses/${course.id}/learn`}
+              className="inline-block rounded bg-accent text-white px-4 py-2 text-sm font-medium hover:bg-accent/90"
+            >
+              Ir a estudiar
+            </a>
+          </div>
         </section>
       )}
     </main>
