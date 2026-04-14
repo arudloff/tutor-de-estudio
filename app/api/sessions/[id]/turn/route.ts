@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runA4Turn, type A4Message, type A4Decision } from '@/lib/agents/a4-evaluator'
 import { recalculatePlan } from '@/lib/agents/a5-planner'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import type { Database } from '@/lib/db/types'
 
 interface RouteParams {
@@ -20,6 +21,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Rate limit: max 5 turnos por minuto por usuario (protege créditos de IA)
+  const rl = checkRateLimit(`turn:${user.id}`, 5, 60)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { data: { response: `Espera ${rl.resetInSeconds} segundos antes de enviar otro mensaje.`, decision: null, canonical_instruction: null, generative_task: null, rate_limited: true } },
+      { status: 200 }
+    )
+  }
 
   const body = await request.json().catch(() => null)
   const userMessage: string = body?.message ?? ''

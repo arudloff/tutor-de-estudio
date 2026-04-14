@@ -9,11 +9,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
 import { env } from '@/lib/env'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
 
 export async function POST(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = checkRateLimit(`tts:${user.id}`, 15, 60)
+  if (!rl.allowed) return NextResponse.json({ error: `Rate limited. Wait ${rl.resetInSeconds}s` }, { status: 429 })
 
   const body = await request.json().catch(() => null)
   if (!body?.text) {
