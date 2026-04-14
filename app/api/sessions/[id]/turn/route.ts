@@ -230,7 +230,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const newUnitState = a4Decision.type === 'pass' ? 'mastered' : 'needs_review'
     await admin.from('sense_unit').update({ state: newUnitState }).eq('id', session.unit_id)
-    await admin.from('learning_session').update({ state: 'evaluated' }).eq('id', session.id)
+    // Cerrar sesion directamente (el artifact generativo es opcional en MVP-1)
+    await admin.from('learning_session').update({ state: 'closed', closed_at: new Date().toISOString() }).eq('id', session.id)
     await recalculatePlan(admin, session.course_id)
 
     if (a4Decision.type === 'pass') {
