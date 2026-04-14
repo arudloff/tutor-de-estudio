@@ -617,10 +617,13 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
               : 'El tutor reprogramará esta unidad para más adelante.'}
           </p>
           <button
-            onClick={() => router.refresh()}
-            className="mt-3 rounded bg-primary text-white px-4 py-2 text-sm font-medium"
+            onClick={() => {
+              // M2: Auto-avance — recargar la página para mostrar la siguiente unidad
+              window.location.reload()
+            }}
+            className="mt-3 rounded bg-accent text-white px-4 py-2 text-sm font-medium hover:bg-accent/90"
           >
-            Continuar
+            Siguiente unidad
           </button>
         </div>
       )}

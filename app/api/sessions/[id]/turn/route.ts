@@ -128,51 +128,76 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     poa: poaRes.data ?? { learner_role: null, discipline: null, research_field: null, target_challenge: null, target_capability: null },
   }
 
-  // Llamar al A4 SIN streaming — esperar respuesta completa
+  // Llamar al A4 con retry para rate limits
   let a4Response = ''
   let a4Decision: A4Decision = { type: 'continue', rubricItemsSatisfied: [], misconceptionsDetected: [] }
 
-  try {
-    await runA4Turn(a4Context, grouped, {
-      onText(text) {
-        a4Response += text
-      },
-      async onDone(visibleText, decision) {
-        a4Response = visibleText
-        a4Decision = decision
-      },
-      onError(error) {
-        throw error
-      },
-    })
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    // eslint-disable-next-line no-console
-    console.error('[session/turn] A4 error:', msg.slice(0, 200))
-
-    // Si es rate limit, devolver mensaje amigable
-    if (msg.includes('429') || msg.includes('rate_limit')) {
-      return NextResponse.json({
-        data: {
-          response: 'El tutor necesita un momento. Espera 1-2 minutos y envía tu mensaje de nuevo.',
-          decision: null,
-          canonical_instruction: isFirstTurn ? ciRes.data?.content : null,
-          rate_limited: true,
-        },
+  const maxRetries = 3
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await runA4Turn(a4Context, grouped, {
+        onText(text) { a4Response += text },
+        async onDone(visibleText, decision) { a4Response = visibleText; a4Decision = decision },
+        onError(error) { throw error },
       })
-    }
+      break // Éxito
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const isRateLimit = msg.includes('429') || msg.includes('rate_limit')
+      // eslint-disable-next-line no-console
+      console.error(`[session/turn] A4 attempt ${attempt}/${maxRetries}: ${msg.slice(0, 120)}`)
 
-    return NextResponse.json({ error: 'Error del agente. Intenta de nuevo en 1 minuto.' }, { status: 500 })
+      if (attempt === maxRetries) {
+        return NextResponse.json({
+          data: {
+            response: isRateLimit
+              ? 'El tutor necesita un momento. Espera 1-2 minutos y envía tu mensaje de nuevo.'
+              : 'Error del agente. Intenta de nuevo en 1 minuto.',
+            decision: null,
+            canonical_instruction: isFirstTurn ? ciRes.data?.content : null,
+            rate_limited: isRateLimit,
+          },
+        })
+      }
+
+      if (isRateLimit) {
+        await new Promise((r) => setTimeout(r, 60000)) // Esperar 60s
+        a4Response = '' // Reset para reintentar
+      } else {
+        await new Promise((r) => setTimeout(r, 5000))
+        a4Response = ''
+      }
+    }
+  }
+
+  // M1: Validar que PASS cumple ≥70% de la rúbrica (CHK-AGENT-008)
+  if (a4Decision.type === 'pass' && rubricItems.length > 0) {
+    const coverageRatio = a4Decision.rubricItemsSatisfied.length / rubricItems.length
+    if (coverageRatio < 0.7) {
+      // eslint-disable-next-line no-console
+      console.log(`[session/turn] PASS rechazado: solo ${Math.round(coverageRatio * 100)}% de rubrica cubierta (${a4Decision.rubricItemsSatisfied.length}/${rubricItems.length}). Forzando continue.`)
+      a4Decision = { ...a4Decision, type: 'continue' }
+      a4Response += '\n\nVeo que vas por buen camino, pero necesito verificar algunos puntos más. ¿Podrías profundizar en tu respuesta?'
+    }
   }
 
   // Persistir respuesta del A4
-  await admin.from('message_log').insert({
+  const { data: savedMsg } = await admin.from('message_log').insert({
     course_id: session.course_id,
     session_id: session.id,
     agent: 'a4',
     role: 'assistant',
     content: a4Response,
-  })
+  }).select('id').single()
+
+  // M1: Recopilar IDs reales de message_log para evidence trazable
+  const { data: allMsgIds } = await admin
+    .from('message_log')
+    .select('id')
+    .eq('session_id', session.id)
+    .order('created_at', { ascending: true })
+
+  const realMessageLogIds = (allMsgIds ?? []).map((m) => m.id)
 
   // Manejar decisión
   let generativeTask = null
@@ -183,8 +208,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       session_id: session.id,
       result: a4Decision.type.toUpperCase() as 'PASS' | 'FAIL',
       evidence: {
+        message_log_ids: realMessageLogIds, // M1: IDs reales, no UUIDs falsos
         rubric_items_satisfied: a4Decision.rubricItemsSatisfied,
         misconceptions_detected: a4Decision.misconceptionsDetected,
+        rubric_coverage_pct: rubricItems.length > 0
+          ? Math.round((a4Decision.rubricItemsSatisfied.length / rubricItems.length) * 100)
+          : null,
       } as unknown as Database['public']['Tables']['hito_accreditation']['Insert']['evidence'],
       reason: a4Decision.reason ?? null,
     })

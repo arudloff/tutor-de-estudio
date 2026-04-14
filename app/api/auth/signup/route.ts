@@ -88,7 +88,8 @@ export async function POST(request: NextRequest) {
   // Actualizar signed_up_at en whitelist
   await admin
     .from('invited_users')
-    .update({ signed_up_at: new Date().toISOString() })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ signed_up_at: new Date().toISOString() } as any)
     .eq('email', email.toLowerCase())
 
   // Sign in para generar sesion JWT
@@ -101,9 +102,10 @@ export async function POST(request: NextRequest) {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setAll(cookiesToSet: any[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: Record<string, unknown> }) =>
               cookieStore.set(name, value, options)
             )
           } catch {

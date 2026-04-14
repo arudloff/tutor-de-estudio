@@ -42,6 +42,22 @@ export default async function LearnPage({ params }: Props) {
     (new Date(course.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   )
 
+  // M2: Cleanup de sesiones abandonadas (>30 min en started/in_progress)
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+  const { data: stuckSessions } = await admin
+    .from('learning_session')
+    .select('id, unit_id')
+    .eq('course_id', params.id)
+    .in('state', ['started', 'in_progress'])
+    .lt('updated_at', thirtyMinAgo)
+
+  if (stuckSessions && stuckSessions.length > 0) {
+    for (const s of stuckSessions) {
+      await admin.from('learning_session').update({ state: 'abandoned' }).eq('id', s.id)
+      await admin.from('sense_unit').update({ state: 'available' }).eq('id', s.unit_id)
+    }
+  }
+
   // Buscar sesión activa (en progreso)
   const { data: activeSession } = await admin
     .from('learning_session')
