@@ -428,12 +428,12 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
       if (tts.autoSpeak && d.response) {
         await tts.speak(d.response, () => {
           // Callback: TTS terminó de hablar
-          // Modo conversación: activar mic con silence detection
+          // Modo conversación: activar mic SIN silence detection —
+          // el usuario presiona "Listo" cuando termina de hablar
           if (conversationMode && !d.decision) {
             speech.startListening((text) => {
               setInput((prev) => (prev + ' ' + text).trim())
-              pendingAutoSendRef.current = true
-            }, true) // autoStopOnSilence = true
+            }, false)
           }
         })
       } else if (conversationMode && !d.decision && !tts.autoSpeak) {
@@ -441,8 +441,7 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
         setTimeout(() => {
           speech.startListening((text) => {
             setInput((prev) => (prev + ' ' + text).trim())
-            pendingAutoSendRef.current = true
-          }, true)
+          }, false)
         }, 500)
       }
 
@@ -507,12 +506,13 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
         pendingAutoSendRef.current = true
       }
     } else {
+      // En modo conversación: SIN silence detection — el usuario decide cuándo termina
       speech.startListening((text) => {
         setInput((prev) => (prev + ' ' + text).trim())
         if (conversationMode) {
           pendingAutoSendRef.current = true
         }
-      }, conversationMode) // autoStopOnSilence en conversation mode
+      }, false)
     }
   }
 
@@ -579,9 +579,83 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
   }
 
   function ChatInput() {
+    // En modo conversación activo + grabando: UI simplificada con botón grande
+    if (conversationMode && speech.listening) {
+      return (
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Escuchando... toma tu tiempo para pensar
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              speech.stopListening()
+              pendingAutoSendRef.current = true
+            }}
+            className="w-full rounded-xl bg-accent text-white py-4 text-lg font-medium hover:bg-accent/90 active:scale-[0.98] transition-all"
+          >
+            Listo, enviar
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setConversationMode(false)
+              speech.stopListening()
+            }}
+            className="text-xs text-stone-400 hover:text-stone-600"
+          >
+            Salir del modo conversación
+          </button>
+        </div>
+      )
+    }
+
+    // En modo conversación + esperando (tutor hablando o procesando)
+    if (conversationMode && (streaming || tts.speaking)) {
+      return (
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2 text-sm text-muted">
+            {tts.speaking && (
+              <>
+                <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                Socrates está hablando...
+              </>
+            )}
+            {streaming && !tts.speaking && (
+              <>
+                <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" />
+                Socrates está pensando...
+              </>
+            )}
+          </div>
+          {tts.speaking && (
+            <button
+              type="button"
+              onClick={() => tts.stop()}
+              className="rounded px-4 py-2 text-sm text-stone-500 bg-stone-100 hover:bg-stone-200"
+            >
+              Saltar audio
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    // En modo conversación + transcribiendo
+    if (conversationMode && speech.transcribing) {
+      return (
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-blue-600">
+          <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          Transcribiendo tu respuesta...
+        </div>
+      )
+    }
+
+    // UI normal (sin modo conversación, o modo conversación inactivo)
     return (
       <div className="space-y-2">
-        {/* Fila 1: controles de modo voz (siempre visibles junto al input) */}
+        {/* Fila 1: controles de modo */}
         <div className="flex items-center gap-2">
           {speech.supported && tts.supported && (
             <button
@@ -601,7 +675,7 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                   : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
               }`}
             >
-              {conversationMode ? '🎙 Conversación' : 'Modo conversación'}
+              {conversationMode ? 'Conversación ON' : 'Modo conversación'}
             </button>
           )}
           {tts.supported && (
@@ -623,14 +697,13 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                     : 'bg-stone-100 text-stone-400'
               }`}
             >
-              {tts.speaking ? '🔊 Hablando...' : tts.autoSpeak ? '🔊 Voz ON' : '🔇 Voz OFF'}
+              {tts.speaking ? 'Hablando...' : tts.autoSpeak ? 'Voz ON' : 'Voz OFF'}
             </button>
           )}
-          {/* Status de grabación/transcripción inline */}
           {speech.listening && (
             <span className="text-xs text-red-600 flex items-center gap-1">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              {conversationMode ? 'Escuchando...' : 'Grabando...'}
+              Grabando...
             </span>
           )}
           {speech.transcribing && (
