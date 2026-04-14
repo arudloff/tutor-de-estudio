@@ -665,7 +665,13 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                 setConversationMode(newMode)
                 if (newMode) {
                   tts.setAutoSpeak(true)
-                  speech.warmUp()
+                  // Activar mic inmediatamente al entrar en modo conversación
+                  speech.startListening((text) => {
+                    setInput((prev) => (prev + ' ' + text).trim())
+                  }, false)
+                } else {
+                  // Al desactivar, detener mic si está grabando
+                  if (speech.listening) speech.stopListening()
                 }
               }}
               title={conversationMode ? 'Modo conversación ON' : 'Activar modo conversación'}
