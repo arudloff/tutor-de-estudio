@@ -7,6 +7,9 @@ const isDev = process.env.NODE_ENV === 'development'
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  eslint: {
+    ignoreDuringBuilds: true, // ESLint corre en pre-commit y CI, no en build
+  },
   async headers() {
     // En dev, Next.js necesita 'unsafe-eval' para HMR (hot module replacement)
     // En produccion, CSP es restrictiva (deuda tecnica: migrar a nonces en S6)
