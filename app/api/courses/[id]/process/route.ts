@@ -95,14 +95,13 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
   if (fileData) {
     const buffer = Buffer.from(await fileData.arrayBuffer())
-    const base64 = buffer.toString('base64')
 
     // Ejecutar en background sin bloquear la respuesta
     runIngestionPipeline(
       admin,
       params.id,
       pdf.id,
-      base64,
+      buffer,
       pdf.filename,
       job.id,
       poa,

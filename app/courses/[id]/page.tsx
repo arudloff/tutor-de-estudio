@@ -1,6 +1,8 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { InterviewChat } from './interview-chat'
+import { UploadPdf } from './upload-pdf'
+import { ProcessButton } from './process-button'
 
 interface Props {
   params: { id: string }
@@ -79,13 +81,28 @@ export default async function CoursePage({ params }: Props) {
         </section>
       )}
 
-      {course.state === 'poa_captured' && (
-        <section className="rounded border border-accent/30 bg-accent/5 p-6">
-          <h2 className="text-lg font-medium mb-2">Objetivo capturado</h2>
-          <p className="text-sm text-muted mb-4">
-            Tu perfil de aprendizaje ha sido capturado. Sube tu material para
-            continuar.
-          </p>
+      {(course.state === 'poa_captured' || course.state === 'corpus_loaded') && (
+        <section className="space-y-6">
+          <div className="rounded border border-accent/30 bg-accent/5 p-6">
+            <h2 className="text-lg font-medium mb-2">Sube tu material</h2>
+            <p className="text-sm text-muted mb-4">
+              Tu perfil de aprendizaje ha sido capturado. Ahora sube el PDF
+              con el que vas a estudiar.
+            </p>
+            <UploadPdf courseId={course.id} />
+          </div>
+
+          {course.state === 'corpus_loaded' && (
+            <div className="rounded border border-stone-200 p-6">
+              <h2 className="text-lg font-medium mb-2">Material listo</h2>
+              <p className="text-sm text-muted mb-4">
+                Tu PDF está subido. Cuando estés listo, Socrates analizará el
+                texto, creará las unidades de sentido y diseñará las lecciones
+                calibradas a tu objetivo.
+              </p>
+              <ProcessButton courseId={course.id} />
+            </div>
+          )}
         </section>
       )}
 

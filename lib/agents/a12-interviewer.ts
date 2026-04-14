@@ -72,7 +72,7 @@ export interface A12Message {
 
 export interface A12StreamCallbacks {
   onText: (text: string) => void
-  onDone: (fullResponse: string) => void
+  onDone: (fullResponse: string) => void | Promise<void>
   onError: (error: Error) => void
 }
 
@@ -113,7 +113,7 @@ export async function runA12Turn(
     inputTokens = finalMessage.usage.input_tokens
     outputTokens = finalMessage.usage.output_tokens
 
-    callbacks.onDone(fullResponse)
+    await callbacks.onDone(fullResponse)
   } catch (error) {
     callbacks.onError(
       error instanceof Error ? error : new Error(String(error))

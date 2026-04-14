@@ -1,3 +1,4 @@
+import { parseLlmJson } from '@/lib/utils/parse-llm-json'
 /**
  * A2 — Analista semantico (descomposicion en unidades de sentido)
  *
@@ -88,7 +89,7 @@ Responde SOLO con el JSON.`,
     jsonStr = jsonMatch[1]
   }
 
-  const parsed = JSON.parse(jsonStr) as {
+  const parsed = parseLlmJson(content) as {
     units?: SenseUnit[]
     paragraphs?: { index: number; text: string; is_substantive: boolean }[]
   }

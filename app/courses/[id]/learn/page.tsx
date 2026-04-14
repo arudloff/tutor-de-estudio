@@ -42,9 +42,24 @@ export default async function LearnPage({ params }: Props) {
     (new Date(course.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   )
 
-  const nextUnit = plan?.next_unit_id
-    ? units?.find((u) => u.id === plan.next_unit_id)
-    : units?.find((u) => u.state === 'available')
+  // Buscar sesión activa (en progreso)
+  const { data: activeSession } = await admin
+    .from('learning_session')
+    .select('id, unit_id, state')
+    .eq('course_id', params.id)
+    .in('state', ['started', 'in_progress', 'evaluated'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const activeUnit = activeSession
+    ? units?.find((u) => u.id === activeSession.unit_id)
+    : null
+
+  const nextUnit = activeUnit
+    ?? (plan?.next_unit_id
+      ? units?.find((u) => u.id === plan.next_unit_id)
+      : units?.find((u) => u.state === 'available'))
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -109,6 +124,7 @@ export default async function LearnPage({ params }: Props) {
           courseId={params.id}
           unitId={nextUnit.id}
           unitName={nextUnit.name}
+          existingSessionId={activeSession?.id ?? null}
         />
       )}
 

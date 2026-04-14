@@ -46,7 +46,7 @@ export async function runIngestionPipeline(
   admin: AdminClient,
   courseId: string,
   pdfId: string,
-  pdfBase64: string,
+  pdfBuffer: Buffer,
   pdfFilename: string,
   jobId: string,
   poa: PoaContext,
@@ -54,12 +54,18 @@ export async function runIngestionPipeline(
 ): Promise<{ success: boolean; unitCount: number }> {
   const report = (p: IngestProgress) => onProgress?.(p)
 
+  // Rate limit: esperar entre llamadas a la API para no exceder 30K tokens/min
+  const rateLimitDelay = async (seconds: number) => {
+    report({ step: 'a1', iteration: 0, message: `Esperando ${seconds}s (rate limit)...` })
+    await new Promise((r) => setTimeout(r, seconds * 1000))
+  }
+
   // --- Paso 1: A1 extrae texto ---
   report({ step: 'a1', iteration: 0, message: 'Extrayendo texto del PDF...' })
 
   await admin.from('ingestion_job').update({ current_step: 'a1', progress_pct: 10 }).eq('id', jobId)
 
-  const a1Result = await runA1(pdfBase64, pdfFilename)
+  const a1Result = await runA1(pdfBuffer, pdfFilename)
 
   await admin
     .from('pdf')
@@ -74,6 +80,9 @@ export async function runIngestionPipeline(
   await admin.from('ingestion_job').update({ progress_pct: 25 }).eq('id', jobId)
 
   // --- Paso 2: A2 → A10 loop ---
+  // Rate limit delay despues del A1 (A1 usa ~105K tokens, limite es 30K/min)
+  await rateLimitDelay(90)
+
   let iteration = 0
   let a2Result: A2Result | null = null
   let coverageResult: CoverageResult | null = null
@@ -90,6 +99,9 @@ export async function runIngestionPipeline(
     a2Result = await runA2(a1Result.fullText, pdfFilename, orphanFeedback)
 
     await admin.from('pdf').update({ state: 'analyzed' }).eq('id', pdfId)
+
+    // Rate limit delay entre A2 y A10
+    await rateLimitDelay(70)
 
     // A10
     report({ step: 'a10', iteration, message: 'Verificando cobertura...' })
@@ -182,6 +194,7 @@ export async function runIngestionPipeline(
 
   // --- Paso 4: A3 disena pedagogia con POA + A7 audita (HU-7) ---
   if (a2Result) {
+    await rateLimitDelay(70)
     report({ step: 'a3', iteration: 0, message: 'Disenando lecciones calibradas al POA...' })
     await admin.from('ingestion_job').update({ current_step: 'a3', progress_pct: 80 }).eq('id', jobId)
 

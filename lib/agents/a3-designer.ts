@@ -1,3 +1,4 @@
+import { parseLlmJson } from '@/lib/utils/parse-llm-json'
 /**
  * A3 — Disenador instruccional
  *
@@ -115,7 +116,7 @@ ${unit.sourceText}`,
   const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
   if (jsonMatch?.[1]) jsonStr = jsonMatch[1]
 
-  const parsed = JSON.parse(jsonStr) as Record<string, unknown>
+  const parsed = parseLlmJson(content) as Record<string, unknown>
 
   return {
     productiveFailureProblem: (parsed.productive_failure_problem as string) ?? '',

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>Test Micrófono</title></head>
+<body>
+<h1>Test de micrófono</h1>
+<button id="btn0" onclick="testAccess()">1. Probar acceso al micrófono</button>
+<br><br>
+<button id="btn" onclick="toggleMic()">2. Activar dictado por voz</button>
+<p id="status">Listo</p>
+<p id="text"></p>
+<pre id="log"></pre>
+<script>
+let recognition = null;
+let active = false;
+
+function log(msg) {
+  document.getElementById('log').textContent += msg + '\n';
+  console.log(msg);
+}
+
+function toggleMic() {
+  if (active) {
+    active = false;
+    if (recognition) recognition.stop();
+    document.getElementById('status').textContent = 'Detenido';
+    document.getElementById('btn').textContent = 'Activar micrófono';
+    return;
+  }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    log('SpeechRecognition NO soportado en este navegador');
+    return;
+  }
+
+  log('Creando SpeechRecognition...');
+  recognition = new SR();
+  recognition.lang = 'es-CL';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onstart = function() {
+    log('EVENT: onstart');
+    document.getElementById('status').textContent = 'Escuchando...';
+  };
+
+  recognition.onresult = function(event) {
+    let text = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      text += event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        log('FINAL: ' + event.results[i][0].transcript);
+      }
+    }
+    document.getElementById('text').textContent = text;
+  };
+
+  recognition.onerror = function(event) {
+    log('EVENT: onerror — ' + event.error + ' (message: ' + event.message + ')');
+  };
+
+  recognition.onend = function() {
+    log('EVENT: onend (active=' + active + ')');
+    if (active) {
+      log('Reiniciando...');
+      setTimeout(function() {
+        try { recognition.start(); } catch(e) { log('Restart failed: ' + e.message); }
+      }, 500);
+    }
+  };
+
+  active = true;
+  document.getElementById('btn').textContent = 'Detener';
+
+  try {
+    recognition.start();
+    log('start() llamado OK');
+  } catch(e) {
+    log('start() ERROR: ' + e.message);
+    active = false;
+  }
+}
+</script>
+</body>
+</html>

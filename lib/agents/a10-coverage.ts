@@ -1,3 +1,4 @@
+import { parseLlmJson } from '@/lib/utils/parse-llm-json'
 /**
  * A10 — Verificador de cobertura (rol adversarial separado)
  *
@@ -93,7 +94,7 @@ ${JSON.stringify(unitsSummary, null, 2)}`,
     jsonStr = jsonMatch[1]
   }
 
-  const parsed = JSON.parse(jsonStr) as {
+  const parsed = parseLlmJson(content) as {
     coverage_pct?: number
     orphan_count?: number
     orphan_paragraphs?: { index: number; text: string; reason: string }[]

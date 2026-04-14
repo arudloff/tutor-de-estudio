@@ -1,3 +1,4 @@
+import { parseLlmJson } from '@/lib/utils/parse-llm-json'
 /**
  * A7 — Auditor de fidelidad
  *
@@ -78,7 +79,7 @@ ${input.sourceText}`,
   const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
   if (jsonMatch?.[1]) jsonStr = jsonMatch[1]
 
-  const parsed = JSON.parse(jsonStr) as {
+  const parsed = parseLlmJson(content) as {
     pass?: boolean
     cite_results?: A7Result['citeResults']
     misconception_coverage?: A7Result['misconceptionCoverage']

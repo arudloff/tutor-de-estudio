@@ -1,19 +1,14 @@
 /**
  * POST /api/sessions/:id/turn
  *
- * Envia un mensaje del aprendiz al A4. Retorna respuesta en streaming.
- * Maneja todo el flujo:
- * - Primer turno (attempt productivo) → persiste attempt, devuelve instruccion + primera pregunta A4
- * - Turnos siguientes (dialogo) → A4 evalua + pregunta o cierra
- * - Cierre (pass/fail) → crea hito_accreditation, devuelve generative_task si PASS
- *
- * AC-9.2, AC-9.3, AC-9.4, AC-9.5, AC-9.6
+ * Envía un mensaje del aprendiz al A4. Retorna respuesta JSON (no streaming).
+ * Simplificado para evitar problemas con SSE + rate limits.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { runA4Turn, type A4Message } from '@/lib/agents/a4-evaluator'
+import { runA4Turn, type A4Message, type A4Decision } from '@/lib/agents/a4-evaluator'
 import { recalculatePlan } from '@/lib/agents/a5-planner'
 import type { Database } from '@/lib/db/types'
 
@@ -31,7 +26,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   const admin = createAdminClient()
 
-  // Cargar sesion con ownership check
   const { data: session } = await admin
     .from('learning_session')
     .select('id, course_id, unit_id, state')
@@ -40,17 +34,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
 
-  // Ownership via course
   const { data: course } = await supabase
-    .from('course')
-    .select('id').eq('id', session.course_id).eq('user_id', user.id).single()
+    .from('course').select('id').eq('id', session.course_id).eq('user_id', user.id).single()
   if (!course) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
 
   if (session.state === 'closed' || session.state === 'evaluated') {
     return NextResponse.json({ error: 'Session already closed' }, { status: 409 })
   }
 
-  // Cargar artefactos de la unidad
+  // Cargar artefactos
   const [pfpRes, ciRes, rubRes, mcRes, poaRes] = await Promise.all([
     admin.from('productive_failure_problem').select('content').eq('unit_id', session.unit_id).single(),
     admin.from('canonical_instruction').select('content').eq('unit_id', session.unit_id).single(),
@@ -60,12 +52,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   ])
 
   const { data: unitData } = await admin
-    .from('sense_unit')
-    .select('name, description')
-    .eq('id', session.unit_id)
-    .single()
+    .from('sense_unit').select('name, description').eq('id', session.unit_id).single()
 
-  // Determinar si es el primer turno (attempt productivo)
   const isFirstTurn = session.state === 'started'
 
   // Persistir mensaje del aprendiz
@@ -79,13 +67,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     })
 
     if (isFirstTurn) {
-      // AC-9.2: persistir como attempt de fallo productivo
       await admin.from('attempt').insert({
         session_id: session.id,
         attempt_type: 'productive_failure',
         content: userMessage,
       })
-      // Transicionar sesion
       await admin.from('learning_session').update({ state: 'in_progress' }).eq('id', session.id)
     } else {
       await admin.from('attempt').insert({
@@ -96,7 +82,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  // Cargar historial del dialogo
+  // Cargar historial
   const { data: messages } = await admin
     .from('message_log')
     .select('role, content')
@@ -108,10 +94,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     content: m.content,
   }))
 
-  // Si es primer turno, inyectar la instruccion canonica como contexto del A4
+  // Agrupar mensajes consecutivos del mismo rol
+  const grouped: A4Message[] = []
+  for (const msg of history) {
+    const last = grouped[grouped.length - 1]
+    if (last && last.role === msg.role) {
+      last.content += '\n\n' + msg.content
+    } else {
+      grouped.push({ ...msg })
+    }
+  }
+  if (grouped.length > 0 && grouped[0]!.role !== 'user') {
+    grouped.unshift({ role: 'user', content: '(inicio)' })
+  }
+
   if (isFirstTurn) {
-    const instructionMsg = `[El aprendiz acaba de intentar el problema de fallo productivo. Su intento fue: "${userMessage}". Ahora muéstrale la instrucción canónica y hazle tu primera pregunta socrática.]\n\nInstrucción canónica para mostrar al aprendiz:\n${ciRes.data?.content ?? ''}`
-    history.push({ role: 'user', content: instructionMsg })
+    grouped.push({
+      role: 'user',
+      content: `[El aprendiz intentó el problema de fallo productivo. Su intento: "${userMessage}". Muéstrale la instrucción canónica y hazle tu primera pregunta socrática.]\n\nInstrucción canónica:\n${ciRes.data?.content ?? ''}`,
+    })
   }
 
   const rubricItems = (rubRes.data?.items as { description: string; scope: string }[]) ?? []
@@ -127,95 +128,89 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     poa: poaRes.data ?? { learner_role: null, discipline: null, research_field: null, target_challenge: null, target_capability: null },
   }
 
-  // Streaming
-  const encoder = new TextEncoder()
+  // Llamar al A4 SIN streaming — esperar respuesta completa
+  let a4Response = ''
+  let a4Decision: A4Decision = { type: 'continue', rubricItemsSatisfied: [], misconceptionsDetected: [] }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const { inputTokens, outputTokens } = await runA4Turn(a4Context, history, {
-          onText(text) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))
-          },
-          async onDone(visibleText, decision) {
-            // Persistir respuesta del A4
-            await admin.from('message_log').insert({
-              course_id: session.course_id,
-              session_id: session.id,
-              agent: 'a4',
-              role: 'assistant',
-              content: visibleText,
-              tokens: inputTokens + outputTokens,
-            })
+  try {
+    await runA4Turn(a4Context, grouped, {
+      onText(text) {
+        a4Response += text
+      },
+      async onDone(visibleText, decision) {
+        a4Response = visibleText
+        a4Decision = decision
+      },
+      onError(error) {
+        throw error
+      },
+    })
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    // eslint-disable-next-line no-console
+    console.error('[session/turn] A4 error:', msg.slice(0, 200))
 
-            // Manejar decision
-            if (decision.type === 'pass' || decision.type === 'fail') {
-              // AC-9.4 / AC-9.5: acreditacion con evidencia trazable
-              const messageIds = (messages ?? []).map(() => crypto.randomUUID()) // simplified
-              await admin.from('hito_accreditation').insert({
-                unit_id: session.unit_id,
-                session_id: session.id,
-                result: decision.type.toUpperCase() as 'PASS' | 'FAIL',
-                evidence: {
-                  message_log_ids: messageIds,
-                  rubric_items_satisfied: decision.rubricItemsSatisfied,
-                  misconceptions_detected: decision.misconceptionsDetected,
-                } as unknown as Database['public']['Tables']['hito_accreditation']['Insert']['evidence'],
-                reason: decision.reason ?? null,
-              })
+    // Si es rate limit, devolver mensaje amigable
+    if (msg.includes('429') || msg.includes('rate_limit')) {
+      return NextResponse.json({
+        data: {
+          response: 'El tutor necesita un momento. Espera 1-2 minutos y envía tu mensaje de nuevo.',
+          decision: null,
+          canonical_instruction: isFirstTurn ? ciRes.data?.content : null,
+          rate_limited: true,
+        },
+      })
+    }
 
-              // Actualizar estado de unidad y sesion
-              const newUnitState = decision.type === 'pass' ? 'mastered' : 'needs_review'
-              await admin.from('sense_unit').update({ state: newUnitState }).eq('id', session.unit_id)
-              await admin.from('learning_session').update({ state: 'evaluated' }).eq('id', session.id)
+    return NextResponse.json({ error: 'Error del agente. Intenta de nuevo en 1 minuto.' }, { status: 500 })
+  }
 
-              // Recalcular plan (HU-11)
-              await recalculatePlan(admin, session.course_id)
-
-              // Si PASS, enviar la tarea generativa
-              if (decision.type === 'pass') {
-                const { data: task } = await admin
-                  .from('generative_task')
-                  .select('id, tier, format, prompt, max_words')
-                  .eq('unit_id', session.unit_id)
-                  .single()
-
-                controller.enqueue(encoder.encode(
-                  `data: ${JSON.stringify({ decision: 'PASS', generative_task: task })}\n\n`
-                ))
-              } else {
-                controller.enqueue(encoder.encode(
-                  `data: ${JSON.stringify({ decision: 'FAIL', reason: decision.reason })}\n\n`
-                ))
-              }
-            }
-
-            // Si es primer turno, tambien enviar la instruccion como parte visible
-            if (isFirstTurn) {
-              controller.enqueue(encoder.encode(
-                `data: ${JSON.stringify({ canonical_instruction: ciRes.data?.content ?? '' })}\n\n`
-              ))
-            }
-
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-            controller.close()
-          },
-          onError(error) {
-            // eslint-disable-next-line no-console
-            console.error('[session/turn] A4 error:', error)
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Agent error' })}\n\n`))
-            controller.close()
-          },
-        })
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('[session/turn] stream error:', error)
-        controller.close()
-      }
-    },
+  // Persistir respuesta del A4
+  await admin.from('message_log').insert({
+    course_id: session.course_id,
+    session_id: session.id,
+    agent: 'a4',
+    role: 'assistant',
+    content: a4Response,
   })
 
-  return new NextResponse(stream, {
-    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
+  // Manejar decisión
+  let generativeTask = null
+
+  if (a4Decision.type === 'pass' || a4Decision.type === 'fail') {
+    await admin.from('hito_accreditation').insert({
+      unit_id: session.unit_id,
+      session_id: session.id,
+      result: a4Decision.type.toUpperCase() as 'PASS' | 'FAIL',
+      evidence: {
+        rubric_items_satisfied: a4Decision.rubricItemsSatisfied,
+        misconceptions_detected: a4Decision.misconceptionsDetected,
+      } as unknown as Database['public']['Tables']['hito_accreditation']['Insert']['evidence'],
+      reason: a4Decision.reason ?? null,
+    })
+
+    const newUnitState = a4Decision.type === 'pass' ? 'mastered' : 'needs_review'
+    await admin.from('sense_unit').update({ state: newUnitState }).eq('id', session.unit_id)
+    await admin.from('learning_session').update({ state: 'evaluated' }).eq('id', session.id)
+    await recalculatePlan(admin, session.course_id)
+
+    if (a4Decision.type === 'pass') {
+      const { data: task } = await admin
+        .from('generative_task')
+        .select('id, tier, format, prompt, max_words')
+        .eq('unit_id', session.unit_id)
+        .single()
+      generativeTask = task
+    }
+  }
+
+  return NextResponse.json({
+    data: {
+      response: a4Response,
+      decision: a4Decision.type !== 'continue' ? a4Decision.type.toUpperCase() : null,
+      canonical_instruction: isFirstTurn ? ciRes.data?.content : null,
+      generative_task: generativeTask,
+      rate_limited: false,
+    },
   })
 }

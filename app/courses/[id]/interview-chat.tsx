@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Message {
@@ -20,23 +20,14 @@ export function InterviewChat({ courseId }: Props) {
   const [poaCaptured, setPoaCaptured] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const started = useRef(false)
 
-  // Auto-scroll al final del chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Iniciar la entrevista al montar (primer turno del A12)
-  useEffect(() => {
-    if (started.current) return
-    started.current = true
-    sendMessage('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  async function sendMessage(userMessage: string) {
+  const sendMessage = useCallback(async (userMessage: string) => {
     setError(null)
     setStreaming(true)
 
@@ -65,62 +56,104 @@ export function InterviewChat({ courseId }: Props) {
         return
       }
 
+      // Timeout de seguridad: si el stream no termina en 60s, desbloquear
+      const timeout = setTimeout(() => {
+        reader.cancel()
+        setStreaming(false)
+      }, 60000)
+
       const decoder = new TextDecoder()
       let assistantContent = ''
 
-      // Agregar mensaje vacio del asistente que vamos llenando
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }])
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
 
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n')
+          const chunk = decoder.decode(value, { stream: true })
+          const lines = chunk.split('\n')
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6)
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6)
+            if (data === '[DONE]') {
+              clearTimeout(timeout)
+              setStreaming(false)
+              return
+            }
 
-          if (data === '[DONE]') continue
+            try {
+              const parsed: { text?: string; poa_captured?: boolean; error?: string } =
+                JSON.parse(data)
 
-          try {
-            const parsed: { text?: string; poa_captured?: boolean; error?: string } =
-              JSON.parse(data)
-
-            if (parsed.text) {
-              assistantContent += parsed.text
-              setMessages((prev) => {
-                const copy = [...prev]
-                const last = copy[copy.length - 1]
-                if (last?.role === 'assistant') {
-                  copy[copy.length - 1] = {
-                    ...last,
-                    content: assistantContent,
+              if (parsed.text) {
+                assistantContent += parsed.text
+                setMessages((prev) => {
+                  const copy = [...prev]
+                  const last = copy[copy.length - 1]
+                  if (last?.role === 'assistant') {
+                    copy[copy.length - 1] = { ...last, content: assistantContent }
                   }
-                }
-                return copy
-              })
-            }
+                  return copy
+                })
+              }
 
-            if (parsed.poa_captured) {
-              setPoaCaptured(true)
-            }
+              if (parsed.poa_captured) {
+                setPoaCaptured(true)
+              }
 
-            if (parsed.error) {
-              setError(parsed.error)
+              if (parsed.error) {
+                setError(parsed.error)
+              }
+            } catch {
+              // Ignore malformed SSE
             }
-          } catch {
-            // Ignore malformed SSE
           }
         }
+      } finally {
+        clearTimeout(timeout)
       }
     } catch {
       setError('Error de conexión con el tutor')
-    } finally {
-      setStreaming(false)
     }
-  }
+    setStreaming(false)
+  }, [courseId])
+
+  // Al montar: cargar historial existente
+  useEffect(() => {
+    let cancelled = false
+
+    async function init() {
+      try {
+        const res = await fetch(`/api/courses/${courseId}/poa/messages`)
+        if (res.ok && !cancelled) {
+          const { data } = await res.json() as {
+            data: { poa_state: string; messages: Message[] }
+          }
+
+          if (data.poa_state === 'captured') {
+            setPoaCaptured(true)
+          }
+
+          if (data.messages.length > 0) {
+            setMessages(data.messages)
+          }
+        }
+      } catch {
+        // Si falla, el usuario puede escribir y el A12 arranca
+      }
+
+      if (!cancelled) {
+        setLoading(false)
+      }
+    }
+
+    init()
+
+    return () => { cancelled = true }
+  }, [courseId])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -152,6 +185,14 @@ export function InterviewChat({ courseId }: Props) {
     } finally {
       setConfirming(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <p className="text-sm text-muted">Cargando entrevista...</p>
+      </div>
+    )
   }
 
   return (

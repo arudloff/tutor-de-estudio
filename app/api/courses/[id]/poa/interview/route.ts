@@ -92,15 +92,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .is('session_id', null)
     .order('created_at', { ascending: true })
 
-  // Construir historial para el A12
-  const history: A12Message[] = (messages ?? []).map((m) => ({
+  // Construir historial para el A12 — AGRUPAR mensajes consecutivos del mismo rol
+  // Anthropic API rechaza mensajes consecutivos del mismo rol (user/user o assistant/assistant)
+  const rawHistory: A12Message[] = (messages ?? []).map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }))
 
   // Si hay un mensaje del usuario, agregarlo
   if (userMessage) {
-    history.push({ role: 'user', content: userMessage })
+    rawHistory.push({ role: 'user', content: userMessage })
 
     // Persistir mensaje del aprendiz
     await admin.from('message_log').insert({
@@ -109,9 +110,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       role: 'user',
       content: userMessage,
     })
-  } else if (history.length === 0) {
+  } else if (rawHistory.length === 0) {
     // Primer turno: el A12 empieza sin input del usuario
-    // No agregamos nada al historial — el A12 inicia la conversacion
+    // Agregamos un mensaje user vacio para que la API lo acepte
+    rawHistory.push({ role: 'user', content: '(inicio de entrevista)' })
+  }
+
+  // Agrupar mensajes consecutivos del mismo rol en uno solo
+  const history: A12Message[] = []
+  for (const msg of rawHistory) {
+    const last = history[history.length - 1]
+    if (last && last.role === msg.role) {
+      // Concatenar al mensaje anterior del mismo rol
+      last.content += '\n\n' + msg.content
+    } else {
+      history.push({ ...msg })
+    }
+  }
+
+  // Asegurar que el historial empieza con 'user' (requisito de Anthropic)
+  if (history.length > 0 && history[0]!.role !== 'user') {
+    history.unshift({ role: 'user', content: '(inicio de entrevista)' })
   }
 
   // Streaming via ReadableStream
