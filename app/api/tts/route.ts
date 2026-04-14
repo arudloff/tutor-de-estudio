@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     const response = await openai.audio.speech.create({
       model: 'tts-1',
-      voice: 'nova', // nova: voz femenina natural, buena en español
+      voice: 'onyx', // onyx: voz masculina neutra, mejor para español latinoamericano
       input: text,
       speed: 1.0,
     })
