@@ -42,7 +42,8 @@ export default async function LearnPage({ params }: Props) {
     (new Date(course.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   )
 
-  // M2: Cleanup de sesiones abandonadas (>30 min en started/in_progress)
+  // M2: Cleanup de sesiones trabadas
+  // 1. Sesiones >30 min en started/in_progress → abandoned + liberar unidad
   const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
   const { data: stuckSessions } = await admin
     .from('learning_session')
@@ -55,6 +56,19 @@ export default async function LearnPage({ params }: Props) {
     for (const s of stuckSessions) {
       await admin.from('learning_session').update({ state: 'abandoned' }).eq('id', s.id)
       await admin.from('sense_unit').update({ state: 'available' }).eq('id', s.unit_id)
+    }
+  }
+
+  // 2. Sesiones en 'evaluated' (PASS dado pero artifact no enviado) → closed
+  const { data: evaluatedSessions } = await admin
+    .from('learning_session')
+    .select('id')
+    .eq('course_id', params.id)
+    .eq('state', 'evaluated')
+
+  if (evaluatedSessions && evaluatedSessions.length > 0) {
+    for (const s of evaluatedSessions) {
+      await admin.from('learning_session').update({ state: 'closed' }).eq('id', s.id)
     }
   }
 
