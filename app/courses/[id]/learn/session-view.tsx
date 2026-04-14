@@ -178,7 +178,9 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
   const [artifact, setArtifact] = useState('')
   const [decision, setDecision] = useState<'PASS' | 'FAIL' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [conversationMode, setConversationMode] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const pendingAutoSendRef = useRef(false)
 
   const speech = useSpeechRecognition()
   const tts = useTextToSpeech()
@@ -301,7 +303,16 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
 
       // Leer respuesta en voz alta
       if (tts.autoSpeak && d.response) {
-        tts.speak(d.response)
+        await tts.speak(d.response)
+        // Modo conversación: activar mic automáticamente después de que el tutor termina de hablar
+        if (conversationMode && !d.decision) {
+          setTimeout(() => {
+            speech.startListening((text) => {
+              setInput((prev) => (prev + ' ' + text).trim())
+              pendingAutoSendRef.current = true
+            })
+          }, 500)
+        }
       }
 
       if (d.canonical_instruction) {
@@ -357,22 +368,59 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
   function toggleDictation() {
     if (speech.listening) {
       speech.stopListening()
+      // En modo conversación, enviar automáticamente al detener
+      if (conversationMode) {
+        pendingAutoSendRef.current = true
+      }
     } else {
-      speech.startListening((text, isFinal) => {
-        if (isFinal) {
-          setInput((prev) => (prev + ' ' + text).trim())
+      speech.startListening((text) => {
+        setInput((prev) => (prev + ' ' + text).trim())
+        if (conversationMode) {
+          pendingAutoSendRef.current = true
         }
       })
     }
   }
+
+  // Auto-enviar cuando hay texto pendiente del modo conversación
+  useEffect(() => {
+    if (pendingAutoSendRef.current && !speech.listening && !speech.transcribing && input.trim()) {
+      pendingAutoSendRef.current = false
+      const msg = input.trim()
+      setInput('')
+      sendTurn(msg)
+    }
+  }, [speech.listening, speech.transcribing, input])
 
   // ============================================================
   // Botones de voz (reutilizables)
   // ============================================================
   function VoiceControls() {
     return (
-      <div className="flex items-center gap-1">
-        {/* Toggle de auto-lectura (voz del tutor ON/OFF) */}
+      <div className="flex items-center gap-2">
+        {/* Modo conversación: graba → envía → escucha → repite */}
+        {speech.supported && tts.supported && (
+          <button
+            type="button"
+            onClick={() => {
+              const newMode = !conversationMode
+              setConversationMode(newMode)
+              if (newMode) {
+                tts.setAutoSpeak(true)
+              }
+            }}
+            title={conversationMode ? 'Modo conversación ON — habla y Socrates responde automáticamente' : 'Activar modo conversación'}
+            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+              conversationMode
+                ? 'bg-accent text-white'
+                : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+            }`}
+          >
+            {conversationMode ? 'Conversación ON' : 'Modo conversación'}
+          </button>
+        )}
+
+        {/* Toggle de voz del tutor */}
         {tts.supported && (
           <button
             type="button"
@@ -383,7 +431,7 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                 tts.setAutoSpeak(!tts.autoSpeak)
               }
             }}
-            title={tts.speaking ? 'Detener lectura' : tts.autoSpeak ? 'Voz del tutor ON' : 'Voz del tutor OFF'}
+            title={tts.speaking ? 'Detener' : tts.autoSpeak ? 'Voz ON' : 'Voz OFF'}
             className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
               tts.speaking
                 ? 'bg-blue-100 text-blue-600 animate-pulse'
