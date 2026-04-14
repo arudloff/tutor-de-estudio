@@ -91,9 +91,11 @@ export default async function LearnPage({ params }: Props) {
       ? units?.find((u) => u.id === plan.next_unit_id)
       : units?.find((u) => u.state === 'available'))
 
+  const hasActiveSession = !!activeSession
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <nav className="mb-6 flex items-baseline justify-between">
+    <main className="mx-auto max-w-3xl px-6 py-6">
+      <nav className="mb-4 flex items-baseline justify-between">
         <a href={`/courses/${params.id}`} className="text-sm text-accent underline">
           ← {course.name}
         </a>
@@ -105,28 +107,53 @@ export default async function LearnPage({ params }: Props) {
         </div>
       </nav>
 
-      {/* Barra de progreso */}
-      <div className="mb-8">
-        <div className="flex justify-between text-sm mb-1">
-          <span>{masteredCount} de {totalUnits} unidades dominadas</span>
+      {/* Barra de progreso compacta */}
+      <div className="mb-4">
+        <div className="flex justify-between text-xs text-muted mb-1">
+          <span>{masteredCount}/{totalUnits} dominadas</span>
           <span>{Math.round(plan?.progress_pct ?? 0)}%</span>
         </div>
-        <div className="w-full bg-stone-200 rounded-full h-2">
+        <div className="w-full bg-stone-200 rounded-full h-1.5">
           <div
-            className="bg-accent rounded-full h-2 transition-all"
+            className="bg-accent rounded-full h-1.5 transition-all"
             style={{ width: `${plan?.progress_pct ?? 0}%` }}
           />
         </div>
       </div>
 
-      {/* Lista de unidades */}
-      <div className="mb-8">
-        <h2 className="text-lg font-medium mb-4">Unidades</h2>
-        <ul className="space-y-2">
+      {/* Sesión activa PRIMERO (cuando hay una) */}
+      {nextUnit && (
+        <div className="mb-6">
+          <SessionView
+            courseId={params.id}
+            unitId={nextUnit.id}
+            unitName={nextUnit.name}
+            existingSessionId={activeSession?.id ?? null}
+          />
+        </div>
+      )}
+
+      {!nextUnit && masteredCount === totalUnits && totalUnits > 0 && (
+        <div className="rounded border border-green-300 bg-green-50 p-6 text-center mb-6">
+          <h2 className="text-lg font-medium text-green-800 mb-2">
+            Curso completado
+          </h2>
+          <p className="text-sm text-green-700">
+            Has dominado todas las unidades de este curso.
+          </p>
+        </div>
+      )}
+
+      {/* Lista de unidades — colapsada durante sesión activa */}
+      <details open={!hasActiveSession}>
+        <summary className="text-sm font-medium cursor-pointer mb-3 text-stone-600 hover:text-stone-800">
+          Unidades ({masteredCount}/{totalUnits})
+        </summary>
+        <ul className="space-y-1.5">
           {(units ?? []).map((unit) => (
             <li
               key={unit.id}
-              className={`rounded border px-4 py-3 flex items-baseline justify-between ${
+              className={`rounded border px-3 py-2 flex items-baseline justify-between text-sm ${
                 unit.state === 'mastered'
                   ? 'border-green-200 bg-green-50'
                   : unit.state === 'available'
@@ -146,29 +173,7 @@ export default async function LearnPage({ params }: Props) {
             </li>
           ))}
         </ul>
-      </div>
-
-      {/* Siguiente sesion */}
-      {nextUnit && (
-        <SessionView
-          courseId={params.id}
-          unitId={nextUnit.id}
-          unitName={nextUnit.name}
-          existingSessionId={activeSession?.id ?? null}
-        />
-      )}
-
-      {!nextUnit && masteredCount === totalUnits && totalUnits > 0 && (
-        <div className="rounded border border-green-300 bg-green-50 p-6 text-center">
-          <h2 className="text-lg font-medium text-green-800 mb-2">
-            Curso completado
-          </h2>
-          <p className="text-sm text-green-700">
-            Has dominado todas las unidades de este curso. Puedes revisar
-            la evidencia de cada acreditación desde la lista de unidades.
-          </p>
-        </div>
-      )}
+      </details>
     </main>
   )
 }

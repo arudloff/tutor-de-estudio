@@ -35,15 +35,16 @@ export async function POST(request: NextRequest) {
       voice: 'onyx', // onyx: voz masculina neutra, mejor para español latinoamericano
       input: text,
       speed: 1.0,
+      response_format: 'mp3',
     })
 
-    const audioBuffer = Buffer.from(await response.arrayBuffer())
-
-    return new NextResponse(audioBuffer, {
+    // Stream directo: pipe OpenAI → cliente sin buffering intermedio.
+    // Reduce latencia ~1-2s vs bufferar todo el audio en el server.
+    const stream = response.body
+    return new NextResponse(stream as unknown as ReadableStream, {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Length': String(audioBuffer.length),
-        'Cache-Control': 'public, max-age=3600', // cachear 1 hora
+        'Cache-Control': 'public, max-age=3600',
       },
     })
   } catch (error) {

@@ -19,6 +19,7 @@ type SessionPhase = 'ready' | 'productive_failure' | 'dialog' | 'generative_task
 
 // ============================================================
 // Hook: dictado por voz (MediaRecorder + Whisper API)
+// Con pre-warm de micrófono para eliminar delay de getUserMedia
 // ============================================================
 function useSpeechRecognition() {
   const [listening, setListening] = useState(false)
@@ -27,61 +28,151 @@ function useSpeechRecognition() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const callbackRef = useRef<((text: string) => void) | null>(null)
+  const analyserCtxRef = useRef<AudioContext | null>(null)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Pre-warmed stream: mantiene micrófono abierto para inicio instantáneo
+  const warmStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     setSupported(typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia)
   }, [])
 
-  const startListening = useCallback((onResult: (text: string, isFinal: boolean) => void) => {
+  // Pre-warm: solicita mic una vez y lo mantiene listo (tracks en mute)
+  const warmUp = useCallback(() => {
+    if (warmStreamRef.current) return
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        // Mutear para no grabar ruido de fondo
+        stream.getTracks().forEach((t) => { t.enabled = false })
+        warmStreamRef.current = stream
+      })
+      .catch(() => {})
+  }, [])
+
+  const startListening = useCallback((onResult: (text: string, isFinal: boolean) => void, autoStopOnSilence = false) => {
     callbackRef.current = (text) => onResult(text, true)
     chunksRef.current = []
 
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then((stream) => {
-        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-        mediaRecorderRef.current = recorder
+    const initRecorder = (stream: MediaStream) => {
+      // Habilitar tracks
+      stream.getTracks().forEach((t) => { t.enabled = true })
 
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data)
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      mediaRecorderRef.current = recorder
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        // Mutear tracks (no cerrar — mantener para reuso)
+        stream.getTracks().forEach((t) => { t.enabled = false })
+        // Limpiar silence detection
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current)
+          silenceTimerRef.current = null
+        }
+        if (analyserCtxRef.current) {
+          analyserCtxRef.current.close().catch(() => {})
+          analyserCtxRef.current = null
         }
 
-        recorder.onstop = async () => {
-          // Detener tracks del micrófono
-          stream.getTracks().forEach((t) => t.stop())
+        if (chunksRef.current.length === 0) return
 
-          if (chunksRef.current.length === 0) return
+        setTranscribing(true)
+        try {
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          const formData = new FormData()
+          formData.append('audio', blob, 'recording.webm')
 
-          setTranscribing(true)
-          try {
-            const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-            const formData = new FormData()
-            formData.append('audio', blob, 'recording.webm')
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData,
+          })
 
-            const res = await fetch('/api/transcribe', {
-              method: 'POST',
-              body: formData,
-            })
-
-            if (res.ok) {
-              const { text } = await res.json() as { text: string }
-              if (text) callbackRef.current?.(text)
-            }
-          } catch {
-            // Transcripción falló silenciosamente
+          if (res.ok) {
+            const { text } = await res.json() as { text: string }
+            if (text) callbackRef.current?.(text)
           }
-          setTranscribing(false)
-          chunksRef.current = []
+        } catch {
+          // Transcripción falló silenciosamente
         }
+        setTranscribing(false)
+        chunksRef.current = []
+      }
 
-        recorder.start()
-        setListening(true)
-      })
-      .catch(() => {
-        setListening(false)
-      })
+      recorder.start()
+      setListening(true)
+
+      // Silence detection: auto-stop after 2s of silence
+      if (autoStopOnSilence) {
+        try {
+          const audioContext = new AudioContext()
+          analyserCtxRef.current = audioContext
+          const source = audioContext.createMediaStreamSource(stream)
+          const analyser = audioContext.createAnalyser()
+          analyser.fftSize = 512
+          source.connect(analyser)
+
+          let silentFrames = 0
+          let hasSpoken = false
+          const dataArray = new Uint8Array(analyser.fftSize)
+
+          const checkSilence = () => {
+            if (recorder.state !== 'recording') return
+
+            analyser.getByteTimeDomainData(dataArray)
+            let sum = 0
+            for (let i = 0; i < dataArray.length; i++) {
+              const val = (dataArray[i]! - 128) / 128
+              sum += val * val
+            }
+            const rms = Math.sqrt(sum / dataArray.length)
+
+            if (rms > 0.02) {
+              hasSpoken = true
+              silentFrames = 0
+            } else {
+              silentFrames++
+            }
+
+            // Auto-stop: 2s de silencio después de hablar (5 * 400ms)
+            if (hasSpoken && silentFrames >= 5) {
+              setListening(false)
+              recorder.stop()
+              return
+            }
+
+            silenceTimerRef.current = setTimeout(checkSilence, 400)
+          }
+
+          // 400ms de gracia antes de detectar silencio
+          silenceTimerRef.current = setTimeout(checkSilence, 400)
+        } catch {
+          // Silence detection no disponible
+        }
+      }
+    }
+
+    // Usar stream pre-warmed si existe (inicio instantáneo)
+    if (warmStreamRef.current && warmStreamRef.current.getTracks().length > 0) {
+      initRecorder(warmStreamRef.current)
+    } else {
+      // Fallback: solicitar mic (primera vez o si el stream se perdió)
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+          warmStreamRef.current = stream
+          initRecorder(stream)
+        })
+        .catch(() => { setListening(false) })
+    }
   }, [])
 
   const stopListening = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
     const recorder = mediaRecorderRef.current
     if (recorder && recorder.state === 'recording') {
       recorder.stop()
@@ -89,28 +180,44 @@ function useSpeechRecognition() {
     setListening(false)
   }, [])
 
-  return { listening, supported, startListening, stopListening, transcribing }
+  return { listening, supported, startListening, stopListening, transcribing, warmUp }
 }
 
 // ============================================================
 // Hook: texto a voz (OpenAI TTS — voz natural)
+// Usa AudioContext para decodificación + reproducción sin gaps
 // ============================================================
 function useTextToSpeech() {
   const [speaking, setSpeaking] = useState(false)
   const [supported] = useState(true)
   const [autoSpeak, setAutoSpeak] = useState(true)
   const [loading, setLoading] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null)
+  const onEndCallbackRef = useRef<(() => void) | null>(null)
 
-  const speak = useCallback(async (text: string) => {
+  // AudioContext singleton — se reutiliza entre llamadas
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new AudioContext()
+    }
+    // Reanudar si fue suspendido por política de autoplay
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume()
+    }
+    return audioCtxRef.current
+  }, [])
+
+  const speak = useCallback(async (text: string, onEnd?: () => void) => {
     if (!text || loading) return
 
     // Detener audio anterior
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (sourceNodeRef.current) {
+      try { sourceNodeRef.current.stop() } catch { /* ya detenido */ }
+      sourceNodeRef.current = null
     }
 
+    onEndCallbackRef.current = onEnd ?? null
     setSpeaking(true)
     setLoading(true)
 
@@ -123,46 +230,50 @@ function useTextToSpeech() {
 
       if (!res.ok) {
         setSpeaking(false)
+        setLoading(false)
         return
       }
 
-      const audioBlob = await res.blob()
-      const audioUrl = URL.createObjectURL(audioBlob)
-      const audio = new Audio(audioUrl)
-      audioRef.current = audio
+      const arrayBuffer = await res.arrayBuffer()
+      const ctx = getAudioCtx()
 
-      audio.onended = () => {
+      // Decodificar MP3 → PCM (rápido, sin buffering del elemento <audio>)
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+
+      // Crear source node y reproducir inmediatamente — sin gaps
+      const source = ctx.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(ctx.destination)
+      sourceNodeRef.current = source
+
+      source.onended = () => {
         setSpeaking(false)
-        URL.revokeObjectURL(audioUrl)
-        audioRef.current = null
+        sourceNodeRef.current = null
+        onEndCallbackRef.current?.()
+        onEndCallbackRef.current = null
       }
 
-      audio.onerror = () => {
-        setSpeaking(false)
-        URL.revokeObjectURL(audioUrl)
-        audioRef.current = null
-      }
-
-      await audio.play()
+      source.start(0)
     } catch {
       setSpeaking(false)
     }
     setLoading(false)
-  }, [loading])
+  }, [loading, getAudioCtx])
 
   const stop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (sourceNodeRef.current) {
+      try { sourceNodeRef.current.stop() } catch { /* ya detenido */ }
+      sourceNodeRef.current = null
     }
     setSpeaking(false)
+    onEndCallbackRef.current = null
   }, [])
 
   return { speaking, supported, speak, stop, autoSpeak, setAutoSpeak }
 }
 
 // ============================================================
-// Componente principal
+// Componente principal — Layout tipo chat (WhatsApp)
 // ============================================================
 export function SessionView({ courseId, unitId, unitName, existingSessionId }: Props) {
   const router = useRouter()
@@ -179,11 +290,15 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
   const [decision, setDecision] = useState<'PASS' | 'FAIL' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [conversationMode, setConversationMode] = useState(false)
+  const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const pendingAutoSendRef = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const speech = useSpeechRecognition()
   const tts = useTextToSpeech()
+
+  const isActivePhase = phase === 'productive_failure' || phase === 'dialog'
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -237,6 +352,14 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, problem])
+
+  // Auto-colapsar header después de los primeros mensajes
+  useEffect(() => {
+    if (messages.length >= 2 && !headerCollapsed) {
+      setHeaderCollapsed(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length])
 
   async function startSession() {
     setError(null)
@@ -303,16 +426,24 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
 
       // Leer respuesta en voz alta
       if (tts.autoSpeak && d.response) {
-        await tts.speak(d.response)
-        // Modo conversación: activar mic automáticamente después de que el tutor termina de hablar
-        if (conversationMode && !d.decision) {
-          setTimeout(() => {
+        await tts.speak(d.response, () => {
+          // Callback: TTS terminó de hablar
+          // Modo conversación: activar mic con silence detection
+          if (conversationMode && !d.decision) {
             speech.startListening((text) => {
               setInput((prev) => (prev + ' ' + text).trim())
               pendingAutoSendRef.current = true
-            })
-          }, 500)
-        }
+            }, true) // autoStopOnSilence = true
+          }
+        })
+      } else if (conversationMode && !d.decision && !tts.autoSpeak) {
+        // Conversation mode sin voz: activar mic inmediatamente
+        setTimeout(() => {
+          speech.startListening((text) => {
+            setInput((prev) => (prev + ' ' + text).trim())
+            pendingAutoSendRef.current = true
+          }, true)
+        }, 500)
       }
 
       if (d.canonical_instruction) {
@@ -321,9 +452,12 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
 
       if (d.decision === 'PASS') {
         setDecision('PASS')
-        setPhase('generative_task')
         if (d.generative_task) {
           setTask(d.generative_task)
+          setPhase('generative_task')
+        } else {
+          // Sin tarea generativa → ir directo a done
+          setPhase('done')
         }
       } else if (d.decision === 'FAIL') {
         setDecision('FAIL')
@@ -378,7 +512,7 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
         if (conversationMode) {
           pendingAutoSendRef.current = true
         }
-      })
+      }, conversationMode) // autoStopOnSilence en conversation mode
     }
   }
 
@@ -393,61 +527,9 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
   }, [speech.listening, speech.transcribing, input])
 
   // ============================================================
-  // Botones de voz (reutilizables)
+  // Subcomponentes
   // ============================================================
-  function VoiceControls() {
-    return (
-      <div className="flex items-center gap-2">
-        {/* Modo conversación: graba → envía → escucha → repite */}
-        {speech.supported && tts.supported && (
-          <button
-            type="button"
-            onClick={() => {
-              const newMode = !conversationMode
-              setConversationMode(newMode)
-              if (newMode) {
-                tts.setAutoSpeak(true)
-              }
-            }}
-            title={conversationMode ? 'Modo conversación ON — habla y Socrates responde automáticamente' : 'Activar modo conversación'}
-            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-              conversationMode
-                ? 'bg-accent text-white'
-                : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-            }`}
-          >
-            {conversationMode ? 'Conversación ON' : 'Modo conversación'}
-          </button>
-        )}
 
-        {/* Toggle de voz del tutor */}
-        {tts.supported && (
-          <button
-            type="button"
-            onClick={() => {
-              if (tts.speaking) {
-                tts.stop()
-              } else {
-                tts.setAutoSpeak(!tts.autoSpeak)
-              }
-            }}
-            title={tts.speaking ? 'Detener' : tts.autoSpeak ? 'Voz ON' : 'Voz OFF'}
-            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-              tts.speaking
-                ? 'bg-blue-100 text-blue-600 animate-pulse'
-                : tts.autoSpeak
-                  ? 'bg-accent/10 text-accent'
-                  : 'bg-stone-100 text-stone-400'
-            }`}
-          >
-            {tts.speaking ? 'Hablando...' : tts.autoSpeak ? 'Voz ON' : 'Voz OFF'}
-          </button>
-        )}
-      </div>
-    )
-  }
-
-  // Botón para leer un mensaje específico
   function SpeakButton({ text }: { text: string }) {
     if (!tts.supported) return null
     return (
@@ -476,6 +558,114 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
     )
   }
 
+  function MicButton({ disabled }: { disabled?: boolean }) {
+    if (!speech.supported) return null
+    return (
+      <button type="button" onClick={toggleDictation} disabled={disabled}
+        className={`rounded p-2 transition-colors ${
+          speech.listening
+            ? 'bg-red-100 text-red-600 animate-pulse'
+            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+        }`}
+        title={speech.listening ? 'Detener grabación' : 'Dictar con voz'}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {speech.listening
+            ? <rect x="6" y="6" width="12" height="12" rx="2" />
+            : <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></>
+          }
+        </svg>
+      </button>
+    )
+  }
+
+  function ChatInput() {
+    return (
+      <div className="space-y-2">
+        {/* Fila 1: controles de modo voz (siempre visibles junto al input) */}
+        <div className="flex items-center gap-2">
+          {speech.supported && tts.supported && (
+            <button
+              type="button"
+              onClick={() => {
+                const newMode = !conversationMode
+                setConversationMode(newMode)
+                if (newMode) {
+                  tts.setAutoSpeak(true)
+                  speech.warmUp()
+                }
+              }}
+              title={conversationMode ? 'Modo conversación ON' : 'Activar modo conversación'}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                conversationMode
+                  ? 'bg-accent text-white'
+                  : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+              }`}
+            >
+              {conversationMode ? '🎙 Conversación' : 'Modo conversación'}
+            </button>
+          )}
+          {tts.supported && (
+            <button
+              type="button"
+              onClick={() => {
+                if (tts.speaking) {
+                  tts.stop()
+                } else {
+                  tts.setAutoSpeak(!tts.autoSpeak)
+                }
+              }}
+              title={tts.speaking ? 'Detener' : tts.autoSpeak ? 'Voz ON' : 'Voz OFF'}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                tts.speaking
+                  ? 'bg-blue-100 text-blue-600 animate-pulse'
+                  : tts.autoSpeak
+                    ? 'bg-accent/10 text-accent'
+                    : 'bg-stone-100 text-stone-400'
+              }`}
+            >
+              {tts.speaking ? '🔊 Hablando...' : tts.autoSpeak ? '🔊 Voz ON' : '🔇 Voz OFF'}
+            </button>
+          )}
+          {/* Status de grabación/transcripción inline */}
+          {speech.listening && (
+            <span className="text-xs text-red-600 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              {conversationMode ? 'Escuchando...' : 'Grabando...'}
+            </span>
+          )}
+          {speech.transcribing && (
+            <span className="text-xs text-blue-600 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              Transcribiendo...
+            </span>
+          )}
+        </div>
+        {/* Fila 2: input + mic + enviar */}
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              streaming ? 'Socrates está pensando...'
+                : speech.listening ? 'Grabando...'
+                  : speech.transcribing ? 'Transcribiendo...'
+                    : 'Escribe o dicta...'
+            }
+            disabled={streaming}
+            className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent disabled:opacity-50"
+          />
+          <MicButton disabled={streaming} />
+          <button type="submit" disabled={streaming || !input.trim()}
+            className="rounded bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
+            Enviar
+          </button>
+        </form>
+      </div>
+    )
+  }
+
   // ============================================================
   // Render
   // ============================================================
@@ -487,187 +677,74 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
     )
   }
 
-  return (
-    <section className="rounded border border-stone-200 p-6">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-medium">Próxima: {unitName}</h2>
-        <VoiceControls />
-      </div>
+  // Fase ready: layout simple (no chat)
+  if (phase === 'ready') {
+    return (
+      <section className="rounded border border-stone-200 p-6">
+        <h2 className="text-lg font-medium mb-1">Próxima: {unitName}</h2>
+        <p className="text-sm text-muted mb-4">
+          Empezarás con un desafío. Intenta resolverlo antes de ver la
+          explicación — la lucha cognitiva es parte del aprendizaje.
+        </p>
+        <button
+          onClick={startSession}
+          className="rounded bg-accent text-white px-4 py-2 text-sm font-medium hover:bg-accent/90"
+        >
+          Empezar sesión
+        </button>
+      </section>
+    )
+  }
 
-      {speech.listening && (
-        <div className="mb-3 px-3 py-2 rounded bg-red-50 border border-red-200 text-sm text-red-700 flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          Grabando... habla y presiona el micrófono de nuevo para transcribir
+  // Generative task: layout simple
+  if (phase === 'generative_task' && task) {
+    return (
+      <section className="rounded border border-stone-200 p-6">
+        <h2 className="text-lg font-medium mb-4">Tarea generativa</h2>
+        <div className="rounded bg-green-50 border border-green-200 p-4 mb-4">
+          <p className="text-sm font-medium text-green-800 mb-1">Acreditado</p>
+          <p className="text-sm">Has demostrado comprensión. Ahora produce:</p>
         </div>
-      )}
-      {speech.transcribing && (
-        <div className="mb-3 px-3 py-2 rounded bg-blue-50 border border-blue-200 text-sm text-blue-700 flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-          Transcribiendo tu voz...
-        </div>
-      )}
-
-      {phase === 'ready' && (
-        <div>
-          <p className="text-sm text-muted mb-4">
-            Empezarás con un desafío. Intenta resolverlo antes de ver la
-            explicación — la lucha cognitiva es parte del aprendizaje.
-          </p>
-          <button
-            onClick={startSession}
-            className="rounded bg-accent text-white px-4 py-2 text-sm font-medium hover:bg-accent/90"
-          >
-            Empezar sesión
-          </button>
-        </div>
-      )}
-
-      {phase === 'productive_failure' && (
-        <div>
-          <div className="rounded bg-amber-50 border border-amber-200 p-4 mb-4">
-            <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-amber-800 mb-1">Desafío</p>
-              <SpeakButton text={problem} />
-            </div>
-            <p className="text-sm">{problem}</p>
-          </div>
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={speech.listening ? 'Grabando...' : speech.transcribing ? 'Transcribiendo...' : 'Tu intento (escribe o dicta)...'}
-              className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent"
-              disabled={streaming}
-            />
-            {speech.supported && (
-              <button type="button" onClick={toggleDictation} disabled={streaming}
-                className={`rounded p-2 ${speech.listening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
-                title={speech.listening ? 'Detener grabación' : 'Dictar con voz'}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  {speech.listening
-                    ? <rect x="6" y="6" width="12" height="12" rx="2" />
-                    : <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></>
-                  }
-                </svg>
-              </button>
-            )}
-            <button type="submit" disabled={streaming || !input.trim()}
-              className="rounded bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
-              Enviar
-            </button>
-          </form>
-        </div>
-      )}
-
-      {(phase === 'dialog' || (phase === 'productive_failure' && messages.length > 0)) && instruction && (
-        <div className="rounded bg-blue-50 border border-blue-200 p-4 mb-4">
+        <div className="rounded border border-stone-200 p-4 mb-4">
           <div className="flex items-start justify-between">
-            <p className="text-sm font-medium text-blue-800 mb-1">Instrucción</p>
-            <SpeakButton text={instruction} />
+            <p className="text-sm font-medium mb-2">Tarea generativa</p>
+            <SpeakButton text={task.prompt} />
           </div>
-          <p className="text-sm whitespace-pre-wrap">{instruction}</p>
+          <p className="text-sm text-muted mb-3">{task.prompt}</p>
+          <p className="text-xs text-muted">Máximo {task.max_words} palabras</p>
         </div>
-      )}
-
-      {phase === 'dialog' && (
-        <>
-          <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
-            {messages.map((msg, i) => (
-              <div key={i} className={`rounded-lg px-4 py-3 text-sm ${
-                msg.role === 'assistant' ? 'bg-stone-100' : 'bg-accent/10 ml-8'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted mb-1">
-                    {msg.role === 'assistant' ? 'Socrates (A4)' : 'Tú'}
-                  </p>
-                  {msg.role === 'assistant' && <SpeakButton text={msg.content} />}
-                </div>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-              </div>
-            ))}
-            {streaming && (
-              <div className="rounded-lg px-4 py-3 text-sm bg-stone-100 animate-pulse">
-                <p className="text-xs text-muted mb-1">Socrates (A4)</p>
-                <div className="flex items-center gap-2 text-muted">
-                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" />
-                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.2s' }} />
-                  <span className="ml-2 text-xs">Pensando...</span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                streaming ? 'Socrates está pensando...'
-                  : speech.listening ? 'Grabando...'
-                    : speech.transcribing ? 'Transcribiendo...'
-                      : 'Tu respuesta (escribe o dicta)...'
-              }
-              disabled={streaming}
-              className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent disabled:opacity-50"
-            />
-            {speech.supported && (
-              <button type="button" onClick={toggleDictation} disabled={streaming}
-                className={`rounded p-2 ${speech.listening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
-                title={speech.listening ? 'Detener grabación' : 'Dictar con voz'}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  {speech.listening
-                    ? <rect x="6" y="6" width="12" height="12" rx="2" />
-                    : <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></>
-                  }
-                </svg>
-              </button>
-            )}
-            <button type="submit" disabled={streaming || !input.trim()}
-              className="rounded bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
-              Enviar
+        <textarea
+          value={artifact}
+          onChange={(e) => setArtifact(e.target.value)}
+          rows={5}
+          placeholder="Escribe tu producción aquí..."
+          className="w-full rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent mb-2"
+        />
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-muted">
+            {artifact.trim().split(/\s+/).filter(Boolean).length} / {task.max_words} palabras
+          </span>
+          <div className="flex gap-2">
+            <button onClick={() => { setPhase('done'); router.refresh() }}
+              className="rounded border border-stone-300 text-stone-600 px-4 py-2 text-sm font-medium hover:bg-stone-50">
+              Omitir
             </button>
-          </form>
-        </>
-      )}
-
-      {phase === 'generative_task' && task && (
-        <div className="mt-4">
-          <div className="rounded bg-green-50 border border-green-200 p-4 mb-4">
-            <p className="text-sm font-medium text-green-800 mb-1">Acreditado</p>
-            <p className="text-sm">Has demostrado comprensión. Ahora produce:</p>
-          </div>
-          <div className="rounded border border-stone-200 p-4 mb-4">
-            <div className="flex items-start justify-between">
-              <p className="text-sm font-medium mb-2">Tarea generativa</p>
-              <SpeakButton text={task.prompt} />
-            </div>
-            <p className="text-sm text-muted mb-3">{task.prompt}</p>
-            <p className="text-xs text-muted">Máximo {task.max_words} palabras</p>
-          </div>
-          <textarea
-            value={artifact}
-            onChange={(e) => setArtifact(e.target.value)}
-            rows={5}
-            placeholder="Escribe tu producción aquí..."
-            className="w-full rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent mb-2"
-          />
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-muted">
-              {artifact.trim().split(/\s+/).filter(Boolean).length} / {task.max_words} palabras
-            </span>
             <button onClick={submitArtifact} disabled={streaming || !artifact.trim()}
               className="rounded bg-accent text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
               {streaming ? 'Guardando...' : 'Enviar producción'}
             </button>
           </div>
         </div>
-      )}
+        {error && <p role="alert" className="text-red-600 text-sm mt-2">{error}</p>}
+      </section>
+    )
+  }
 
-      {phase === 'done' && (
-        <div className={`mt-4 rounded p-4 ${
+  // Done: layout simple con auto-avance
+  if (phase === 'done') {
+    return (
+      <section className="rounded border border-stone-200 p-6">
+        <div className={`rounded p-4 ${
           decision === 'PASS' ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'
         }`}>
           <p className="text-sm font-medium">
@@ -675,22 +752,110 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
           </p>
           <p className="text-sm text-muted mt-1">
             {decision === 'PASS'
-              ? 'Tu producción ha sido guardada. Avanza a la siguiente unidad.'
+              ? 'Avanzando a la siguiente unidad...'
               : 'El tutor reprogramará esta unidad para más adelante.'}
           </p>
           <button
-            onClick={() => {
-              // M2: Auto-avance — recargar la página para mostrar la siguiente unidad
-              window.location.reload()
-            }}
+            onClick={() => window.location.reload()}
             className="mt-3 rounded bg-accent text-white px-4 py-2 text-sm font-medium hover:bg-accent/90"
           >
             Siguiente unidad
           </button>
         </div>
+      </section>
+    )
+  }
+
+  // ============================================================
+  // Chat layout (productive_failure + dialog) — WhatsApp style
+  // ============================================================
+  const headerContent = phase === 'productive_failure' ? problem : instruction
+  const headerLabel = phase === 'productive_failure' ? 'Desafío' : 'Instrucción'
+  const headerColor = phase === 'productive_failure'
+    ? { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800' }
+    : { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' }
+
+  return (
+    <section className="flex flex-col rounded border border-stone-200 h-[calc(100dvh-12rem)] min-h-[400px]">
+      {/* ── Header fijo: solo título ── */}
+      <div className="px-4 py-2.5 border-b border-stone-200 shrink-0">
+        <h2 className="text-sm font-medium truncate">{unitName}</h2>
+      </div>
+
+      {/* ── Collapsible challenge/instruction header ── */}
+      {headerContent && (
+        <div className={`shrink-0 border-b ${headerColor.border}`}>
+          <button
+            type="button"
+            onClick={() => setHeaderCollapsed(!headerCollapsed)}
+            className={`w-full flex items-center justify-between px-4 py-2 text-left ${headerColor.bg} hover:opacity-90 transition-opacity`}
+          >
+            <span className={`text-xs font-medium ${headerColor.text}`}>
+              {headerLabel} {headerCollapsed ? '(toca para expandir)' : ''}
+            </span>
+            <div className="flex items-center gap-1">
+              <SpeakButton text={headerContent} />
+              <svg
+                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className={`transition-transform ${headerCollapsed ? '' : 'rotate-180'} text-stone-400`}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </button>
+          {!headerCollapsed && (
+            <div className={`px-4 py-3 ${headerColor.bg}`}>
+              <p className="text-sm whitespace-pre-wrap">{headerContent}</p>
+            </div>
+          )}
+        </div>
       )}
 
-      {error && <p role="alert" className="text-red-600 text-sm mt-2">{error}</p>}
+      {/* ── Messages (scrollable area) ── */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`rounded-2xl px-4 py-2.5 text-sm max-w-[85%] ${
+              msg.role === 'assistant'
+                ? 'bg-stone-100 rounded-tl-sm'
+                : 'bg-accent/10 rounded-tr-sm'
+            }`}>
+              {msg.role === 'assistant' && (
+                <div className="flex items-center justify-between mb-0.5">
+                  <p className="text-[10px] text-muted">Socrates</p>
+                  <SpeakButton text={msg.content} />
+                </div>
+              )}
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            </div>
+          </div>
+        ))}
+        {streaming && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl rounded-tl-sm px-4 py-3 text-sm bg-stone-100">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" />
+                <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.2s' }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* ── Input fijo abajo ── */}
+      <div className="shrink-0 px-4 py-3 border-t border-stone-200 bg-white">
+        <ChatInput />
+      </div>
+
+      {/* ── Error ── */}
+      {error && (
+        <div className="shrink-0 px-4 py-2 bg-red-50">
+          <p role="alert" className="text-red-600 text-xs">{error}</p>
+        </div>
+      )}
     </section>
   )
 }
