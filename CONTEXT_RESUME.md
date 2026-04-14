@@ -1,7 +1,7 @@
 # Socrates — Context Resume
 
 > **Para Claude (al retomar):** Lee este archivo primero. Da el snapshot mínimo necesario para reanudar el trabajo sin re-leer todo.
-> **Última actualización:** 2026-04-14 (cierre de fase — MVP-1 walking skeleton completo y funcional)
+> **Última actualización:** 2026-04-14 (sprints M1-M5 completados, auditoría PASS, deploy en Vercel)
 
 ## En una línea
 Socrates es un tutor doctoral basado en IA con MVP-1 **funcional y probado por el usuario**. Walking skeleton completo: signup → POA → upload PDF → pipeline 6 agentes → sesión socrática con voz natural. El investigador completó su primera unidad de "Principios de Economía" y reportó: "es muy entretenido estudiar así".
@@ -58,15 +58,16 @@ Socrates es un tutor doctoral basado en IA con MVP-1 **funcional y probado por e
 
 ## Qué tocar al retomar
 
-1. Regenerar service_role key de Supabase
-2. Auto-avance entre unidades
-3. Cleanup automático de sesiones abandonadas
-4. Reprocesar unidades audited_fail
-5. Deploy a Vercel
-6. Agregar Ausubel al A9 del cluster doctoral
+1. **Sprint M6 — Multi-PDF** (siguiente): subir N PDFs con roles, A2_corpus cruce inter-textual, sprints temáticos
+2. Agregar Ausubel al A9 del cluster doctoral
+3. Tests de integración para flujo sesión→diálogo→acreditación (defecto M4)
+4. Endpoint DELETE /api/auth/account (derecho a eliminación)
+5. Extraer hooks de voz de session-view.tsx a archivos propios (>644 líneas)
 
 ## Cómo retomar
 
 1. Decir "retomo socrates"
-2. `cd C:\dev\socrates && npm run dev` → http://localhost:3000
-3. Login: alejandro@chenriquez.cl
+2. URL producción: https://tutor-de-estudio.vercel.app
+3. URL local: `cd C:\dev\socrates && npm run dev` → http://localhost:3000
+4. Login: alejandro@chenriquez.cl
+5. Deploy hook: `curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_Mgp5ZLqOE9EUf9lEstUEbT25RoKd/4sW3asfMrb"`
