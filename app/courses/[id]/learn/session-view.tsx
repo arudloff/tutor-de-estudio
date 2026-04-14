@@ -99,10 +99,11 @@ function useTextToSpeech() {
   const [speaking, setSpeaking] = useState(false)
   const [supported] = useState(true)
   const [autoSpeak, setAutoSpeak] = useState(true)
+  const [loading, setLoading] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const speak = useCallback(async (text: string) => {
-    if (!text) return
+    if (!text || loading) return
 
     // Detener audio anterior
     if (audioRef.current) {
@@ -111,6 +112,7 @@ function useTextToSpeech() {
     }
 
     setSpeaking(true)
+    setLoading(true)
 
     try {
       const res = await fetch('/api/tts', {
@@ -145,7 +147,8 @@ function useTextToSpeech() {
     } catch {
       setSpeaking(false)
     }
-  }, [])
+    setLoading(false)
+  }, [loading])
 
   const stop = useCallback(() => {
     if (audioRef.current) {
@@ -369,34 +372,7 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
   function VoiceControls() {
     return (
       <div className="flex items-center gap-1">
-        {/* Botón de dictado */}
-        {speech.supported && (
-          <button
-            type="button"
-            onClick={toggleDictation}
-            disabled={streaming}
-            title={speech.listening ? 'Detener dictado' : 'Dictar con voz'}
-            className={`rounded p-2 text-sm transition-colors ${
-              speech.listening
-                ? 'bg-red-100 text-red-600 animate-pulse'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            } disabled:opacity-50`}
-          >
-            {speech.listening ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" x2="12" y1="19" y2="22" />
-              </svg>
-            )}
-          </button>
-        )}
-
-        {/* Toggle de auto-lectura */}
+        {/* Toggle de auto-lectura (voz del tutor ON/OFF) */}
         {tts.supported && (
           <button
             type="button"
@@ -407,8 +383,8 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                 tts.setAutoSpeak(!tts.autoSpeak)
               }
             }}
-            title={tts.speaking ? 'Detener lectura' : tts.autoSpeak ? 'Voz activada (click para desactivar)' : 'Voz desactivada (click para activar)'}
-            className={`rounded p-2 text-sm transition-colors ${
+            title={tts.speaking ? 'Detener lectura' : tts.autoSpeak ? 'Voz del tutor ON' : 'Voz del tutor OFF'}
+            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
               tts.speaking
                 ? 'bg-blue-100 text-blue-600 animate-pulse'
                 : tts.autoSpeak
@@ -416,24 +392,7 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                   : 'bg-stone-100 text-stone-400'
             }`}
           >
-            {tts.speaking ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </svg>
-            ) : tts.autoSpeak ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <line x1="22" x2="16" y1="9" y2="15" />
-                <line x1="16" x2="22" y1="9" y2="15" />
-              </svg>
-            )}
+            {tts.speaking ? 'Hablando...' : tts.autoSpeak ? 'Voz ON' : 'Voz OFF'}
           </button>
         )}
       </div>
@@ -446,13 +405,24 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
     return (
       <button
         type="button"
-        onClick={() => tts.speak(text)}
-        title="Leer en voz alta"
-        className="ml-2 text-stone-400 hover:text-accent transition-colors inline-flex items-center"
+        onClick={() => {
+          if (tts.speaking) {
+            tts.stop()
+          } else {
+            tts.speak(text)
+          }
+        }}
+        title={tts.speaking ? 'Detener' : 'Leer en voz alta'}
+        className={`ml-2 transition-colors inline-flex items-center ${
+          tts.speaking ? 'text-accent animate-pulse' : 'text-stone-400 hover:text-accent'
+        }`}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          {tts.speaking
+            ? <line x1="22" x2="16" y1="9" y2="15" />
+            : <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          }
         </svg>
       </button>
     )
@@ -518,15 +488,24 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={speech.listening ? 'Grabando... click mic para detener' : speech.transcribing ? 'Transcribiendo...' : 'Tu intento (está bien si no sabes la respuesta)...'}
+              placeholder={speech.listening ? 'Grabando...' : speech.transcribing ? 'Transcribiendo...' : 'Tu intento (escribe o dicta)...'}
               className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent"
               disabled={streaming}
             />
-            <button
-              type="submit"
-              disabled={streaming || !input.trim()}
-              className="rounded bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
-            >
+            {speech.supported && (
+              <button type="button" onClick={toggleDictation} disabled={streaming}
+                className={`rounded p-2 ${speech.listening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
+                title={speech.listening ? 'Detener grabación' : 'Dictar con voz'}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {speech.listening
+                    ? <rect x="6" y="6" width="12" height="12" rx="2" />
+                    : <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></>
+                  }
+                </svg>
+              </button>
+            )}
+            <button type="submit" disabled={streaming || !input.trim()}
+              className="rounded bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
               Enviar
             </button>
           </form>
@@ -578,17 +557,26 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
-                streaming
-                  ? 'Socrates está pensando (puede tomar hasta 1 min)...'
-                  : speech.listening
-                    ? 'Grabando tu voz...'
-                    : speech.transcribing
-                      ? 'Transcribiendo...'
-                      : 'Tu respuesta (escribe o dicta con el micrófono)...'
+                streaming ? 'Socrates está pensando...'
+                  : speech.listening ? 'Grabando...'
+                    : speech.transcribing ? 'Transcribiendo...'
+                      : 'Tu respuesta (escribe o dicta)...'
               }
               disabled={streaming}
               className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent disabled:opacity-50"
             />
+            {speech.supported && (
+              <button type="button" onClick={toggleDictation} disabled={streaming}
+                className={`rounded p-2 ${speech.listening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
+                title={speech.listening ? 'Detener grabación' : 'Dictar con voz'}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {speech.listening
+                    ? <rect x="6" y="6" width="12" height="12" rx="2" />
+                    : <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></>
+                  }
+                </svg>
+              </button>
+            )}
             <button type="submit" disabled={streaming || !input.trim()}
               className="rounded bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
               Enviar
