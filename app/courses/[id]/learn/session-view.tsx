@@ -257,11 +257,18 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
 
     try {
+      // Timeout de 2 minutos — si el A4 no responde, desbloquear
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 120000)
+
       const res = await fetch(`/api/sessions/${sessionId}/turn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeout)
 
       const result = await res.json() as {
         data?: {
@@ -310,7 +317,13 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
       }
 
       if (phase === 'productive_failure') setPhase('dialog')
-    } catch { setError('Error de conexión') }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('El tutor tardó demasiado. Espera 1 minuto y envía tu mensaje de nuevo.')
+      } else {
+        setError('Error de conexión. Intenta de nuevo.')
+      }
+    }
     finally { setStreaming(false) }
   }
 
@@ -546,6 +559,17 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
                 <div className="whitespace-pre-wrap">{msg.content}</div>
               </div>
             ))}
+            {streaming && (
+              <div className="rounded-lg px-4 py-3 text-sm bg-stone-100 animate-pulse">
+                <p className="text-xs text-muted mb-1">Socrates (A4)</p>
+                <div className="flex items-center gap-2 text-muted">
+                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" />
+                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  <span className="ml-2 text-xs">Pensando...</span>
+                </div>
+              </div>
+            )}
             <div ref={chatEndRef} />
           </div>
           <form onSubmit={handleSubmit} className="flex gap-2">
@@ -555,10 +579,12 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 streaming
-                  ? 'El tutor está pensando...'
+                  ? 'Socrates está pensando (puede tomar hasta 1 min)...'
                   : speech.listening
-                    ? 'Escuchando tu voz...'
-                    : 'Tu respuesta (escribe o dicta con el micrófono)...'
+                    ? 'Grabando tu voz...'
+                    : speech.transcribing
+                      ? 'Transcribiendo...'
+                      : 'Tu respuesta (escribe o dicta con el micrófono)...'
               }
               disabled={streaming}
               className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm focus:ring-2 focus:ring-accent disabled:opacity-50"
