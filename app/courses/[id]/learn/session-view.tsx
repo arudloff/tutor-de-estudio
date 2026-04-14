@@ -696,11 +696,9 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
 }
 
 // TypeScript declarations for Web Speech API
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
   interface Window {
     SpeechRecognition: any
     webkitSpeechRecognition: any
   }
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */

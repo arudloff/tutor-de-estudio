@@ -10,7 +10,6 @@
  * pdf2json opera localmente y extrae todo el texto fielmente.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFParser = require('pdf2json')
 
 interface A1Result {

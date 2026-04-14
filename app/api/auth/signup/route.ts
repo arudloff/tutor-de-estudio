@@ -88,7 +88,6 @@ export async function POST(request: NextRequest) {
   // Actualizar signed_up_at en whitelist
   await admin
     .from('invited_users')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({ signed_up_at: new Date().toISOString() } as any)
     .eq('email', email.toLowerCase())
 
@@ -102,7 +101,6 @@ export async function POST(request: NextRequest) {
         getAll() {
           return cookieStore.getAll()
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setAll(cookiesToSet: any[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: Record<string, unknown> }) =>
