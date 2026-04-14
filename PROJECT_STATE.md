@@ -1,8 +1,8 @@
 # Socrates — Estado actual
-> Última actualización: 2026-04-11 (Sprint S0 Bootstrap completo)
+> Última actualización: 2026-04-14 (MVP-1 walking skeleton completo y funcional)
 
 ## Estado general
-Proyecto con **Fases A, B, C de /ingeniería completas** (decisiones + procesos + requisitos) y **Sprint S0 (Bootstrap) completado**. El scaffold ejecutable del MVP-1 está en el repo con Next.js 14 + TypeScript strict + Supabase clients + primera migración SQL con RLS + tests adversariales (env + migraciones) + hooks git pre-commit + CI en GitHub Actions + scripts de auditoría. Listo para avanzar al Sprint S1 (HU-1 + HU-2: auth por whitelist + crear curso).
+**MVP-1 funcional y validado por el usuario.** Walking skeleton completo: signup por whitelist → entrevista A12 (POA con Ausubel) → upload PDF → pipeline A1→A2→A10→A3→A7 (6 agentes) → sesión socrática con A4 → acreditación trazable → dashboard de progreso. Incluye dictado por voz (Whisper) y texto a voz natural (OpenAI TTS "nova"). El investigador completó su primera unidad de "Principios de Economía" y reportó que la experiencia es "muy entretenida". Curso real activo: 25 unidades procesadas, 13 disponibles, 1 dominada.
 
 ## Lo que funciona hoy
 - **Visión** — completa, documentada en docs/01_VISION.md
