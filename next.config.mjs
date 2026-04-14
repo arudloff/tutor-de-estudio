@@ -23,10 +23,11 @@ const nextConfig = {
         ].join('; ')
       : [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:",
           "font-src 'self' data:",
+          "media-src 'self' blob:",
           "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://api.openai.com",
           "frame-ancestors 'none'",
           "base-uri 'self'",
