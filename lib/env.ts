@@ -99,11 +99,24 @@ function parsePublicEnv(): PublicEnv {
  * IMPORTANTE: en el cliente (browser) solo las NEXT_PUBLIC_* estan disponibles.
  * En el cliente, usar `publicEnv` (abajo) en lugar de `env`.
  */
-export const env: Env =
-  typeof window === 'undefined'
-    ? parseEnv()
-    : // En el cliente, solo devolvemos las NEXT_PUBLIC_* validadas
-      (parsePublicEnv() as unknown as Env)
+// En build-time, Next.js puede importar este modulo sin tener todas las env vars.
+// Solo validamos en runtime (cuando hay request), no durante build.
+let _cachedEnv: Env | null = null
+
+function getEnv(): Env {
+  if (_cachedEnv) return _cachedEnv
+  if (typeof window !== 'undefined') {
+    return parsePublicEnv() as unknown as Env
+  }
+  _cachedEnv = parseEnv()
+  return _cachedEnv
+}
+
+export const env: Env = new Proxy({} as Env, {
+  get(_, prop: string) {
+    return getEnv()[prop as keyof Env]
+  },
+})
 
 /**
  * Subconjunto de env seguro para exponer al cliente.
