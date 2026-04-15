@@ -200,6 +200,37 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     content: a4Response,
   }).select('id').single()
 
+  // D1: Persist SOLO + Toulmin analysis if available
+  if (savedMsg && (a4Decision.soloAnalysis || a4Decision.toulminAnalysis)) {
+    // Count existing turns for this session to determine turn_number
+    const { count: existingTurns } = await admin
+      .from('turn_analysis')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id)
+
+    const turnNumber = (existingTurns ?? 0) + 1
+    const solo = a4Decision.soloAnalysis ?? { level: 1, label: 'prestructural' as const, evidence: '' }
+    const toulmin = a4Decision.toulminAnalysis
+
+    await admin.from('turn_analysis').insert({
+      course_id: session.course_id,
+      session_id: session.id,
+      message_id: savedMsg.id,
+      unit_id: session.unit_id,
+      turn_number: turnNumber,
+      solo_level: solo.level,
+      solo_label: solo.label,
+      solo_evidence: solo.evidence,
+      toulmin_claim: toulmin?.claim ?? false,
+      toulmin_data: toulmin?.data ?? false,
+      toulmin_warrant: toulmin?.warrant ?? false,
+      toulmin_backing: toulmin?.backing ?? false,
+      toulmin_qualifier: toulmin?.qualifier ?? false,
+      toulmin_rebuttal: toulmin?.rebuttal ?? false,
+      toulmin_summary: toulmin?.summary ?? null,
+    })
+  }
+
   // M1: Recopilar IDs reales de message_log para evidence trazable
   const { data: allMsgIds } = await admin
     .from('message_log')

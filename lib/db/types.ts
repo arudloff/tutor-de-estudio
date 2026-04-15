@@ -389,12 +389,128 @@ export interface Database {
         Insert: { id?: string; course_id: string; next_unit_id?: string | null; progress_pct?: number; projected_finish?: string | null; at_risk?: boolean; gap_days?: number | null }
         Update: { id?: string; course_id?: string; next_unit_id?: string | null; progress_pct?: number; projected_finish?: string | null; at_risk?: boolean; gap_days?: number | null; recalculated_at?: string }
       }
+      turn_analysis: {
+        Row: {
+          id: string
+          course_id: string
+          session_id: string
+          message_id: string
+          unit_id: string
+          turn_number: number
+          solo_level: number
+          solo_label: SoloLabel
+          solo_evidence: string
+          toulmin_claim: boolean
+          toulmin_data: boolean
+          toulmin_warrant: boolean
+          toulmin_backing: boolean
+          toulmin_qualifier: boolean
+          toulmin_rebuttal: boolean
+          toulmin_summary: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          session_id: string
+          message_id: string
+          unit_id: string
+          turn_number: number
+          solo_level: number
+          solo_label: SoloLabel
+          solo_evidence: string
+          toulmin_claim?: boolean
+          toulmin_data?: boolean
+          toulmin_warrant?: boolean
+          toulmin_backing?: boolean
+          toulmin_qualifier?: boolean
+          toulmin_rebuttal?: boolean
+          toulmin_summary?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          session_id?: string
+          message_id?: string
+          unit_id?: string
+          turn_number?: number
+          solo_level?: number
+          solo_label?: SoloLabel
+          solo_evidence?: string
+          toulmin_claim?: boolean
+          toulmin_data?: boolean
+          toulmin_warrant?: boolean
+          toulmin_backing?: boolean
+          toulmin_qualifier?: boolean
+          toulmin_rebuttal?: boolean
+          toulmin_summary?: string | null
+          created_at?: string
+        }
+      }
+      learner_note: {
+        Row: {
+          id: string
+          course_id: string
+          user_id: string
+          title: string | null
+          content: string
+          tags: string[]
+          unit_id: string | null
+          misconception_id: string | null
+          session_id: string | null
+          source_pdf_id: string | null
+          source_span: Json | null
+          is_conceptual_change: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          user_id: string
+          title?: string | null
+          content: string
+          tags?: string[]
+          unit_id?: string | null
+          misconception_id?: string | null
+          session_id?: string | null
+          source_pdf_id?: string | null
+          source_span?: Json | null
+          is_conceptual_change?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          user_id?: string
+          title?: string | null
+          content?: string
+          tags?: string[]
+          unit_id?: string | null
+          misconception_id?: string | null
+          session_id?: string | null
+          source_pdf_id?: string | null
+          source_span?: Json | null
+          is_conceptual_change?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: Record<string, never>
   }
 }
+
+export type SoloLabel =
+  | 'prestructural'
+  | 'unistructural'
+  | 'multistructural'
+  | 'relational'
+  | 'extended_abstract'
 
 export type PdfRole = 'principal' | 'equivalente' | 'complementario' | 'referencial' | 'contrapunto'
 

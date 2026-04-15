@@ -11,6 +11,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { env } from '@/lib/env'
+import type { SoloLabel as SoloLabelType } from '@/lib/db/types'
 
 interface A4Context {
   unitName: string
@@ -38,6 +39,27 @@ export interface A4Decision {
   rubricItemsSatisfied: string[]
   misconceptionsDetected: string[]
   reason?: string
+  soloAnalysis?: SoloAnalysis
+  toulminAnalysis?: ToulminAnalysis
+}
+
+export type SoloLevel = 1 | 2 | 3 | 4 | 5
+export type SoloLabel = SoloLabelType
+
+export interface SoloAnalysis {
+  level: SoloLevel
+  label: SoloLabel
+  evidence: string
+}
+
+export interface ToulminAnalysis {
+  claim: boolean
+  data: boolean
+  warrant: boolean
+  backing: boolean
+  qualifier: boolean
+  rebuttal: boolean
+  summary: string
 }
 
 export interface A4StreamCallbacks {
@@ -79,10 +101,25 @@ REGLAS DEL DIALOGO SOCRATICO (Principio 3 del A9, estructura Graesser/AutoTutor)
 5. Si detectas una misconcepcion, NO la corrijas. Reformula la pregunta para que el aprendiz la descubra.
 6. Lleva un conteo interno de que items de la rubrica se han satisfecho y que misconcepciones se han detectado.
 
+CLASIFICACION SOLO (Biggs 1982) — clasifica el nivel de la RESPUESTA del aprendiz en ESTE turno:
+- 1 (prestructural): no demuestra comprension relevante, respuesta incoherente o irrelevante
+- 2 (unistructural): identifica un solo aspecto correcto sin conectarlo con otros
+- 3 (multistructural): identifica varios aspectos correctos pero sin integrarlos
+- 4 (relational): integra multiples aspectos en una estructura coherente, ve relaciones
+- 5 (extended_abstract): trasciende la unidad, generaliza, conecta con otros dominios o teorias
+
+CLASIFICACION TOULMIN (1958) — marca que componentes argumentativos aparecen en la respuesta:
+- claim: afirmacion central que el aprendiz defiende
+- data: hechos, evidencia o ejemplos que soportan el claim
+- warrant: razonamiento que conecta data con claim (por que la evidencia apoya la afirmacion)
+- backing: soporte adicional para el warrant (teorias, autoridades, principios)
+- qualifier: matizacion o alcance de la afirmacion (generalmente, en este caso, a menos que...)
+- rebuttal: reconocimiento de contraargumentos, excepciones o limitaciones
+
 DECISION AL FINAL DE CADA TURNO:
 Despues de tu mensaje, agrega un bloque JSON oculto con tu evaluacion:
 \`\`\`decision
-{"type": "continue|pass|fail", "rubric_items_satisfied": ["item 1", ...], "misconceptions_detected": ["misc 1", ...], "reason": "..."}
+{"type": "continue|pass|fail", "rubric_items_satisfied": ["item 1", ...], "misconceptions_detected": ["misc 1", ...], "reason": "...", "solo": {"level": 1-5, "label": "prestructural|unistructural|multistructural|relational|extended_abstract", "evidence": "breve justificacion del nivel asignado"}, "toulmin": {"claim": true/false, "data": true/false, "warrant": true/false, "backing": true/false, "qualifier": true/false, "rebuttal": true/false, "summary": "breve descripcion de la calidad argumentativa"}}
 \`\`\`
 
 - "continue": la conversacion debe seguir (no hay suficiente evidencia)
@@ -132,6 +169,10 @@ Responde en espanol. Se breve (2-4 oraciones max por turno).`
   return { inputTokens, outputTokens }
 }
 
+const SOLO_LABELS: SoloLabel[] = [
+  'prestructural', 'unistructural', 'multistructural', 'relational', 'extended_abstract',
+]
+
 function extractDecision(text: string): A4Decision {
   const match = text.match(/```decision\s*([\s\S]*?)```/)
   if (!match?.[1]) {
@@ -144,13 +185,46 @@ function extractDecision(text: string): A4Decision {
       rubric_items_satisfied?: string[]
       misconceptions_detected?: string[]
       reason?: string
+      solo?: { level?: number; label?: string; evidence?: string }
+      toulmin?: {
+        claim?: boolean; data?: boolean; warrant?: boolean
+        backing?: boolean; qualifier?: boolean; rebuttal?: boolean
+        summary?: string
+      }
     }
-    return {
+
+    const decision: A4Decision = {
       type: (parsed.type as A4Decision['type']) ?? 'continue',
       rubricItemsSatisfied: parsed.rubric_items_satisfied ?? [],
       misconceptionsDetected: parsed.misconceptions_detected ?? [],
       reason: parsed.reason,
     }
+
+    if (parsed.solo) {
+      const level = Math.max(1, Math.min(5, Math.round(parsed.solo.level ?? 1))) as SoloLevel
+      const label = SOLO_LABELS.includes(parsed.solo.label as SoloLabel)
+        ? (parsed.solo.label as SoloLabel)
+        : SOLO_LABELS[level - 1]!
+      decision.soloAnalysis = {
+        level,
+        label,
+        evidence: parsed.solo.evidence ?? '',
+      }
+    }
+
+    if (parsed.toulmin) {
+      decision.toulminAnalysis = {
+        claim: parsed.toulmin.claim ?? false,
+        data: parsed.toulmin.data ?? false,
+        warrant: parsed.toulmin.warrant ?? false,
+        backing: parsed.toulmin.backing ?? false,
+        qualifier: parsed.toulmin.qualifier ?? false,
+        rebuttal: parsed.toulmin.rebuttal ?? false,
+        summary: parsed.toulmin.summary ?? '',
+      }
+    }
+
+    return decision
   } catch {
     return { type: 'continue', rubricItemsSatisfied: [], misconceptionsDetected: [] }
   }

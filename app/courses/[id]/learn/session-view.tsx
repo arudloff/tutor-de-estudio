@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { QuickNote } from './quick-note'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -926,7 +927,12 @@ export function SessionView({ courseId, unitId, unitName, existingSessionId }: P
 
       {/* ── Input fijo abajo ── */}
       <div className="shrink-0 px-4 py-3 border-t border-stone-200 bg-white">
-        <ChatInput />
+        <div className="flex gap-2 items-start">
+          <div className="flex-1">
+            <ChatInput />
+          </div>
+          <QuickNote courseId={courseId} unitId={unitId} sessionId={sessionId} />
+        </div>
       </div>
 
       {/* ── Error ── */}

@@ -99,7 +99,19 @@ export default async function LearnPage({ params }: Props) {
         <a href={`/courses/${params.id}`} className="text-sm text-accent underline">
           ← {course.name}
         </a>
-        <div className="text-sm text-muted">
+        <div className="flex items-baseline gap-3 text-sm text-muted">
+          <a
+            href={`/courses/${params.id}/analytics`}
+            className="text-accent underline"
+          >
+            Dashboard
+          </a>
+          <a
+            href={`/courses/${params.id}/notes`}
+            className="text-accent underline"
+          >
+            Notas
+          </a>
           {daysRemaining > 0 ? `${daysRemaining} días` : 'Vencido'}
           {plan?.at_risk && (
             <span className="ml-2 text-red-600 font-medium">En riesgo</span>
