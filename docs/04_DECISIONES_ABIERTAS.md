@@ -3,7 +3,7 @@
 > Lo que aún no se ha resuelto y debe resolverse antes (o durante) `/ingeniería`.
 > Cada decisión incluye opciones, criterio de evaluación y un favorito provisorio.
 
-## Estado de cierre (actualizado 2026-04-11)
+## Estado de cierre (actualizado 2026-04-15)
 
 | ID | Tema | Estado | Resolución | Documento |
 |---|---|---|---|---|
@@ -31,7 +31,10 @@
 
 **Agentes activos en MVP-1:** A1, A2, A3, A4, A7, A10, **A12** (entrevista POA al crear curso). Total: 7 agentes en MVP-1 (uno más que el plan previo, por D18).
 
-**Decisiones bloqueantes de código:** todas cerradas. **D14-D19 cerradas el 2026-04-11.** Listo para Fase 2 de /ingeniería.
+| **D20** | **Lectura Socrática: texto del autor como tercer participante** | ✅ **CERRADA 2026-04-15** | El A4 introduce pasajes del texto fuente en capas progresivas (oración → párrafo → argumento) después de verificar comprensión base. El texto confirma, desafía y matiza. Confrontación textual. Producción con cita obligatoria. Rúbrica en 3 fases: conceptual → textual → producción | docs/09 |
+| **D21** | **Dashboard de metacognición con 10 secciones** | ✅ **CERRADA 2026-04-15** | Integra SOLO (Biggs), Toulmin, BKT, ZDP (Vygotsky), ENA (Shaffer), SRL (Zimmerman) + inventario de conceptos con recuerdo espaciado + notas personales + mini-test diagnóstico. 10 bloques. El A4 clasifica cada turno en SOLO + Toulmin en tiempo real. IBC (Índice de Brecha Cognitiva) como indicador compuesto | docs/09 |
+
+**Decisiones cerradas totales: 21.** D1-D19 cerradas 2026-04-10/11. D20-D21 cerradas 2026-04-15.
 
 ---
 
