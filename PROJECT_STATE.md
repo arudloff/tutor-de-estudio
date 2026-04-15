@@ -1,8 +1,8 @@
 # Socrates — Estado actual
-> Última actualización: 2026-04-14 (MVP-1 walking skeleton completo y funcional)
+> Última actualización: 2026-04-15 (sprints D1+D2+D6 completados, landing page, deploy en Vercel)
 
 ## Estado general
-**MVP-1 funcional y validado por el usuario.** Walking skeleton completo: signup por whitelist → entrevista A12 (POA con Ausubel) → upload PDF → pipeline A1→A2→A10→A3→A7 (6 agentes) → sesión socrática con A4 → acreditación trazable → dashboard de progreso. Incluye dictado por voz (Whisper) y texto a voz natural (OpenAI TTS "nova"). El investigador completó su primera unidad de "Principios de Economía" y reportó que la experiencia es "muy entretenida". Curso real activo: 25 unidades procesadas, 13 disponibles, 1 dominada.
+**MVP-1 funcional + sprints D1/D2/D6 del dashboard de metacognición desplegados.** Walking skeleton completo + clasificación SOLO/Toulmin por turno (D1), dashboard de metacognición con 3 bloques: progreso vs deadline, IBC, convergencia+ZDP (D2), notas personales del aprendiz con CRUD+tags+export (D6), landing page pública. Deploy en Vercel operativo. Curso real activo: 25 unidades, 3 mastered, 22 available.
 
 ## Lo que funciona hoy
 - **Visión** — completa, documentada en docs/01_VISION.md
@@ -30,6 +30,21 @@
 - CI corriendo en GitHub (se activa al primer push con el workflow)
 
 ## Último hito completado
+**2026-04-15 — Sprints D1+D2+D6 + Landing page**
+- Qué se hizo: Implementación de 3 sprints en paralelo + landing page pública
+  - **D1:** A4 clasifica cada turno en SOLO (Biggs, 5 niveles) + Toulmin (6 componentes). Migración 0006_analysis.sql con RLS. Endpoints analytics SOLO + Toulmin. 17 tests adversariales del clasificador.
+  - **D2:** Dashboard de metacognición con 3 bloques: progreso vs deadline (velocidad, proyección, at_risk), IBC (Índice de Brecha Cognitiva 0-1), convergencia + ZDP. Single-fetch client architecture.
+  - **D6:** Notas personales del aprendiz. Migración 0007_learner_note.sql con 4 RLS policies. CRUD API con Zod validation, tags (GIN index), búsqueda, export markdown. UI: página completa + QuickNote en sesión.
+  - **Landing:** Página pública estática con hero, 6 ideas fuerza, flujo de sesión, audiencia, footer académico.
+- Auditoría: agente Nivel 2 separado verificó ACs. 4 issues encontrados y corregidos (data leak, filter injection, PATCH logic, triple-fetch).
+- Decisiones clave:
+  - IBC = 1 - (avg_SOLO - 1) / 4 — normalizado 0-1, higher = bigger gap
+  - ZDP calibration: <3 turns = too_easy, 3-6 = optimal, >6 = too_hard
+  - Landing page estática (no server component) para evitar hydration mismatch
+  - Middleware maneja redirect de usuarios autenticados desde /
+- Archivos: 23 nuevos, 7 modificados. Tests: 98/98 PASS. Pre-commit 4/4 PASS.
+- Deploy: Vercel en producción, migraciones 0006+0007 aplicadas en Supabase.
+
 **2026-04-11 (tarde) — Sprint S0 Bootstrap completo**
 - Qué se hizo: scaffold ejecutable del MVP-1 creado en el mismo directorio del repo tutor-de-estudio. Next.js 14 con App Router + TypeScript strict con `noUncheckedIndexedAccess` + Tailwind CSS + CSP headers. `lib/env.ts` con validación Zod de fail-fast al startup. `lib/supabase/` con 3 clients separados (browser, server, admin). Primera migración SQL `0001_init.sql` con `invited_users` (RLS bloqueante) + `course` (RLS con 4 policies + state machine CHECK + trigger updated_at). Tests adversariales con Vitest: 6 tests para `lib/env.ts` (incluyendo bypass tentativos) + 10 tests estáticos para la migración (verificando RLS, ON DELETE CASCADE, no-USING-true, etc.). Scripts `audit-secrets.mjs` y `audit-rls.mjs` que el pre-commit hook y CI ejecutan. Hook husky pre-commit bloqueante con los 4 checks (secrets + RLS + typecheck + tests). CI en `.github/workflows/ci.yml` con 3 jobs (audit estático, typecheck+tests, npm audit high/critical). README completamente reescrito con stack, setup, scripts y roadmap de sprints.
 - Decisiones clave tomadas durante S0:
@@ -72,24 +87,25 @@
   - `G:\Mi unidad\DOCTORADO\Organizaciones Hibridadas\Cluster de Investigación_publicación\A9_Tutor_Sin_Deuda.docx`
   - `gen_A9.js`, `A9_tabla_verificacion_citas.md`, `A9_Tutor_Sin_Deuda.yunque-dr.json`
 
-## Próximos pasos sugeridos (en orden estricto)
-1. ✅ Fase 2 de /ingeniería — COMPLETA en `docs/06_PROCESOS.md`
-2. ✅ Fase 3 de /ingeniería — COMPLETA en `docs/07_REQUISITOS.md`
-3. ✅ Sprint S0 (Bootstrap) — COMPLETO
-4. **Sprint S1 (Auth + crear curso)** — Siguiente. Implementa HU-1 (sign-up por whitelist con AC-1.1 a 1.4) y HU-2 (crear curso con AC-2.1 a 2.3). Requiere proyecto Supabase real + primer aprovisionamiento (migración aplicada + primer email en whitelist). Termina con auditoría YUNQUE Nivel 2 por agente separado + QA Report.
-5. **Sprint S2 (A12 + POA + state machine)** — HU-3 (A12 conduce entrevista), HU-4 (POA bloquea sin PDFs)
-6. **Sprint S3 (Upload + A1 + A2 + A10)** — HU-5, HU-6. Primer agente LLM real (A1 con GPT-4o) + A2 + loop A2↔A10
-7. **Sprint S4 (A3 con POA + A7)** — HU-7. Primer A3 calibrado contra POA real
-8. **Sprint S5 (Sesión socrática completa)** — HU-8 a HU-11. El corazón del producto: fallo productivo + diálogo A4 con POA + acreditación trazable
-9. **Sprint S6 (Dashboard + hardening)** — HU-12. Cierre del MVP-1, auditoría YUNQUE completa final, lighthouse, a11y
-10. **Tarea de cluster doctoral (paralela, NO bloquea Socrates):** agregar Ausubel 1963/1968 como referencia teórica al A9 en el próximo ciclo de corrección del artículo
+## Próximos pasos sugeridos
+1. ✅ Sprints S0-S6 + M1-M5 — COMPLETOS (MVP-1)
+2. ✅ D20+D21 cerradas — Lectura Socrática + Dashboard metacognición
+3. ✅ D1+D2+D6 — SOLO/Toulmin, dashboard bloques 1-2-5, notas personales
+4. ✅ Landing page
+5. **Sprint D3 (Dashboard bloques 3-4)** — SOLO + Toulmin visual con gráficos. Requiere D1.
+6. **Sprint D4 (Lectura Socrática)** — Prompt A4 expandido con Fase 4, exposición en capas, confrontación textual.
+7. **Sprint M6 (Multi-PDF)** — UI upload con roles, A2_corpus, A10_corpus, unidades multi-fuente.
+8. **Sprints D5→D7→D8→D9→D10** — secuenciales (inventario, ENA, mini-test, cobertura, integración final)
 
 ## Deuda técnica conocida
-- **CSP con `'unsafe-inline'` en script-src y style-src** — severidad baja. Razón: Next 14 requiere inline scripts para hydration inicial y Tailwind inyecta estilos inline. Plan: reemplazar por nonces dinámicos en S6 (hardening). Ubicación: `next.config.mjs` sección headers.
-- **Tests dinámicos de RLS contra Postgres real ausentes** — severidad media. En S0 solo tenemos checks estáticos sobre SQL (`audit-rls.mjs` + `tests/migrations.test.ts`). Los tests dinámicos adversariales (intentar leer datos de otro usuario con JWT forjado) se agregan en S1 cuando haya Postgres efímero en CI.
-- **`scripts/db-migrate.mjs` es stub** — severidad baja. En S0 solo lista migraciones sin ejecutarlas. Implementación completa en S1 con conexión real a Supabase.
-- **CI no se ha activado todavía** — severidad baja. El workflow `.github/workflows/ci.yml` existe pero no se ha ejecutado porque el primer push tras S0 aún no ocurrió.
-- **ADR-001 (`.audit-queue/` + hook pre-push)** — diferido del BoK. No bloquea S0 pero conviene agregarlo en S1 o S2.
+- **CSP con `'unsafe-inline'`** — severidad baja. Plan: nonces dinámicos en hardening sprint.
+- **Tests dinámicos de RLS ausentes** — severidad media. Solo checks estáticos. Plan: Postgres efímero en CI.
+- **No hay tests de API routes** — severidad media. Lógica de negocio (IBC, velocity, ZDP) en handlers sin tests.
+- **Analytics endpoints sin paginación** — severidad baja. Sin LIMIT en SOLO/Toulmin. OK para MVP.
+- **Redis para rate limiter** — severidad baja. Map en memoria. Interfaz abstraída lista para swap.
+- **turn_analysis INSERT policy WITH CHECK(TRUE)** — severidad baja. Solo se inserta server-side.
+- **`scripts/db-migrate.mjs` es stub** — severidad baja. Migraciones se aplican manualmente en SQL Editor.
+- **ADR-001 (`.audit-queue/` + hook pre-push)** — diferido del BoK.
 
 ## Riesgos identificados
 - **Calidad del chunking semántico** — si las "unidades de sentido" son malas, todo el pipeline falla. Severidad: alta. Mitigación: el agente A2 (Analista) debe usar Claude Opus y debe haber un agente A7 (Auditor) que verifique la calidad de las unidades antes de pasarlas al diseñador.

@@ -1,28 +1,24 @@
 # Socrates — Context Resume
 
 > **Para Claude (al retomar):** Lee este archivo primero. Da el snapshot mínimo necesario para reanudar el trabajo sin re-leer todo.
-> **Última actualización:** 2026-04-14 (sprints M1-M5 completados, auditoría PASS, deploy en Vercel)
+> **Última actualización:** 2026-04-15 (sprints D1+D2+D6, landing page, deploy Vercel)
 
 ## En una línea
-Socrates es un tutor doctoral basado en IA con MVP-1 **funcional y probado por el usuario**. Walking skeleton completo: signup → POA → upload PDF → pipeline 6 agentes → sesión socrática con voz natural. El investigador completó su primera unidad de "Principios de Economía" y reportó: "es muy entretenido estudiar así".
+Socrates es un tutor doctoral basado en IA. MVP-1 funcional + dashboard de metacognición (SOLO/Toulmin/IBC/convergencia) + notas personales + landing page. Deploy en Vercel. 98 tests, pre-commit 4/4 PASS.
 
-## Estado al 2026-04-14
+## Estado al 2026-04-15
 
-- Visión: ✓ docs/01
-- Principios pedagógicos: ✓ docs/02
-- Arquitectura: ✓ 12 agentes, docs/03
-- Fase 1 /ingeniería: ✓ docs/05 (D1-D19 cerradas, Ausubel estricto)
-- Fase 2 /ingeniería: ✓ docs/06 (Service Blueprint, state machines, SIPOC)
-- Fase 3 /ingeniería: ✓ docs/07 (12 historias INVEST, DDL, NFRs)
-- **Sprint S0-S6: ✓ TODOS COMPLETOS**
-- **MVP-1 funcional y validado por el usuario**
-- Código: ✓ ~70 archivos, 6 agentes LLM, 5 migraciones SQL
-- Tests: ✓ 35/35 PASS, pre-commit hook activo
-- Repo: ✓ arudloff/tutor-de-estudio, 14 commits en main
-- Directorio de trabajo: `C:\dev\socrates` (npm install funcional)
-- Directorio Google Drive: `G:\Mi unidad\DOCTORADO\Tutor de estudio` (docs, sin node_modules)
-- Supabase: ✓ proyecto "socrates" activo con DB + Storage + Auth
-- Curso real: ✓ "TOPICOS DE ECONOMIA (A)" con 25 unidades, 13 disponibles, 1 dominada
+- Sprints S0-S6 + M1-M5: ✓ MVP-1 completo
+- **D20+D21 cerradas** — docs/09_SPRINTS_D20_D21.md
+- **D1 completado** — A4 clasifica SOLO+Toulmin por turno, migración 0006, analytics endpoints
+- **D2 completado** — Dashboard bloques 1-2-5 (progreso, IBC, convergencia+ZDP)
+- **D6 completado** — Notas personales: CRUD + tags + búsqueda + export markdown + QuickNote en sesión
+- **Landing page** — pública, estática, 6 ideas fuerza
+- Código: ✓ ~90 archivos, 7 migraciones SQL
+- Tests: ✓ 98/98 PASS, pre-commit 4/4 PASS
+- Repo: ✓ arudloff/tutor-de-estudio, 20 commits en main
+- Deploy: ✓ https://tutor-de-estudio.vercel.app
+- Curso real: ✓ "TOPICOS DE ECONOMIA (A)" con 25 unidades, 3 mastered
 
 ## Stack activo del MVP-1
 
@@ -58,11 +54,11 @@ Socrates es un tutor doctoral basado en IA con MVP-1 **funcional y probado por e
 
 ## Qué tocar al retomar
 
-1. **Sprint M6 — Multi-PDF** (siguiente): subir N PDFs con roles, A2_corpus cruce inter-textual, sprints temáticos
-2. Agregar Ausubel al A9 del cluster doctoral
-3. Tests de integración para flujo sesión→diálogo→acreditación (defecto M4)
-4. Endpoint DELETE /api/auth/account (derecho a eliminación)
-5. Extraer hooks de voz de session-view.tsx a archivos propios (>644 líneas)
+1. **Sprint D3** — Dashboard bloques 3-4 (SOLO + Toulmin visual con gráficos). Requiere D1 (ya completado).
+2. **Sprint D4** — Lectura Socrática (D20). Prompt A4 expandido, exposición en capas, confrontación textual.
+3. **Sprint M6** — Multi-PDF: upload con roles, A2_corpus, A10_corpus, unidades multi-fuente.
+4. Tests de integración para API routes (IBC, velocity, ZDP — deuda técnica identificada por auditor)
+5. Extraer hooks de voz de session-view.tsx a archivos propios (>950 líneas)
 
 ## Cómo retomar
 
