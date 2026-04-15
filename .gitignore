@@ -69,3 +69,7 @@ desktop.ini
 
 # Bitacora session files (these are personal journals)
 .bitacora/session-*.md
+
+# Generated docs
+*.docx
+~$*
