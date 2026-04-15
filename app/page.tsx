@@ -44,9 +44,9 @@ export default async function HomePage() {
         <div className="max-w-2xl mx-auto text-center">
           <h2 id="problema" className="sr-only">El problema</h2>
           <blockquote className="text-base sm:text-lg leading-relaxed text-primary/80 italic">
-            &ldquo;La misma IA puede producir <strong className="text-accent">+127% de aprendizaje</strong> o{' '}
+            {'\u201C'}La misma IA puede producir <strong className="text-accent">+127% de aprendizaje</strong> o{' '}
             <strong className="text-red-700">-17% de daño cognitivo</strong>.
-            La diferencia no es la tecnología — es la instrucción.&rdquo;
+            La diferencia no es la tecnología — es la instrucción.{'\u201D'}
           </blockquote>
           <cite className="mt-4 block text-sm text-muted not-italic">
             Bastani et al., 2025, <span className="italic">PNAS</span>
@@ -124,7 +124,7 @@ export default async function HomePage() {
         <p className="text-sm text-muted leading-relaxed max-w-xl mx-auto">
           Operacionalización del artículo A9 del cluster doctoral
           <br className="hidden sm:block" />
-          <em>&ldquo;Coexistir con lo que nos excede&rdquo;</em>
+          <em>{'\u201C'}Coexistir con lo que nos excede{'\u201D'}</em>
         </p>
         <p className="mt-3 text-sm text-muted">
           Alejandro Rudloff — Universidad de Talca, 2026
