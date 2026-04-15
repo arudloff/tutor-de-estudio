@@ -43,8 +43,8 @@ export async function middleware(request: NextRequest) {
 
   // Rutas publicas: no requieren autenticacion
   if (PUBLIC_ROUTES.has(pathname) || pathname.startsWith('/api/auth/')) {
-    // Si ya esta autenticado y va a /login o /signup, redirigir a /dashboard
-    if (user && (pathname === '/login' || pathname === '/signup')) {
+    // Si ya esta autenticado y va a /, /login o /signup, redirigir a /dashboard
+    if (user && (pathname === '/' || pathname === '/login' || pathname === '/signup')) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)

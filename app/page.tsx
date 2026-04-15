@@ -1,14 +1,9 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+/**
+ * Landing page — static, no auth calls.
+ * Middleware handles redirect to /dashboard for authenticated users.
+ */
 
-export default async function HomePage() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (user) {
-    redirect('/dashboard')
-  }
-
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Hero ── */}
