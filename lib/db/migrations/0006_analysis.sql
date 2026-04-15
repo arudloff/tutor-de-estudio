@@ -58,4 +58,5 @@ CREATE POLICY "Service inserts turn_analysis"
 -- ============================================================
 -- Migration tracking
 -- ============================================================
-INSERT INTO _migrations (name) VALUES ('0006_analysis');
+INSERT INTO _migrations (id, name) VALUES (6, '0006_analysis')
+ON CONFLICT (id) DO NOTHING;

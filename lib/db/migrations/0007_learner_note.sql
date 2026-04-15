@@ -45,7 +45,7 @@ CREATE INDEX idx_learner_note_search   ON learner_note USING GIN(
 -- Updated_at trigger
 CREATE TRIGGER set_learner_note_updated_at
   BEFORE UPDATE ON learner_note
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
 -- RLS — users see only their own notes
@@ -72,4 +72,5 @@ CREATE POLICY "Users delete own notes"
 -- ============================================================
 -- Migration tracking
 -- ============================================================
-INSERT INTO _migrations (name) VALUES ('0007_learner_note');
+INSERT INTO _migrations (id, name) VALUES (7, '0007_learner_note')
+ON CONFLICT (id) DO NOTHING;

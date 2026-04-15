@@ -85,6 +85,6 @@ describe('0007_learner_note.sql — learner_note', () => {
   })
 
   it('PASS: registers migration', () => {
-    expect(sql).toMatch(/INSERT INTO _migrations \(name\) VALUES \('0007_learner_note'\)/)
+    expect(sql).toContain("INSERT INTO _migrations (id, name) VALUES (7, '0007_learner_note')")
   })
 })

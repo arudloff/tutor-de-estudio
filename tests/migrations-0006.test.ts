@@ -90,6 +90,6 @@ describe('0006_analysis.sql — turn_analysis', () => {
   })
 
   it('PASS: registers migration', () => {
-    expect(sql).toMatch(/INSERT INTO _migrations \(name\) VALUES \('0006_analysis'\)/)
+    expect(sql).toContain("INSERT INTO _migrations (id, name) VALUES (6, '0006_analysis')")
   })
 })
